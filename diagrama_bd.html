@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagrama de Base de Datos - Hospital Fichaje</title>
+    <!-- Incluimos Mermaid JS para renderizar gráficos en la web -->
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            padding: 40px; 
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            max-width: 1000px;
+            width: 100%;
+            overflow-x: auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .mermaid { 
+            display: flex; 
+            justify-content: center; 
+        }
+        .instructions {
+            margin-top: 20px;
+            color: #666;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Diagrama de Base de Datos</h1>
+        <div class="mermaid">
+erDiagram
+    Rol ||--o{ Usuario : "tiene"
+    Rol {
+        int id_rol PK
+        varchar nombre
+    }
+
+    Usuario {
+        int id_usuario PK
+        varchar usuario
+        varchar contrasena
+        int id_rol FK
+    }
+
+    Cobertura ||--o{ Paciente : "cubre"
+    Cobertura {
+        int id_cobertura PK
+        varchar nombre
+    }
+
+    Especialidad ||--o{ Medico_Especialidad : "tiene"
+    Especialidad {
+        int id_especialidad PK
+        varchar nombre
+    }
+
+    Paciente ||--o{ Ficha : "solicita"
+    Paciente ||--o{ Historial_Clinico : "posee"
+    Paciente {
+        int id_paciente PK
+        varchar nombre
+        varchar apellido
+        varchar ci
+        varchar telefono
+        varchar correo
+        int id_cobertura FK
+    }
+
+    Medico ||--o{ Medico_Especialidad : "tiene"
+    Medico ||--o{ Horario : "dispone"
+    Medico ||--o{ Ausencia_Medico : "registra"
+    Medico ||--o{ Ficha : "atiende"
+    Medico {
+        int id_medico PK
+        varchar nombre
+        varchar apellido
+        varchar telefono
+    }
+
+    Medico_Especialidad {
+        int id_medico PK, FK
+        int id_especialidad PK, FK
+    }
+
+    Horario ||--o{ Ficha : "asigna_en"
+    Horario {
+        int id_horario PK
+        int id_medico FK
+        varchar dia_semana
+        time hora_inicio
+        time hora_fin
+        date fecha_inicio
+        date fecha_fin
+        int limite_fichas
+    }
+
+    Ausencia_Medico {
+        int id_ausencia PK
+        int id_medico FK
+        date fecha_ausencia
+        varchar motivo
+    }
+
+    Ficha ||--o{ Pago : "genera"
+    Ficha {
+        int id_ficha PK
+        int id_paciente FK
+        int id_medico FK
+        int id_horario FK
+        date fecha
+        time hora
+        varchar estado
+    }
+
+    Historial_Clinico {
+        int id_historial PK
+        int id_paciente FK
+        text diagnostico
+        text tratamiento
+        date fecha
+    }
+
+    Pago {
+        int id_pago PK
+        int id_ficha FK
+        decimal monto
+        timestamp fecha
+        varchar metodo
+        varchar estado_pago
+    }
+        </div>
+        <p class="instructions">Click derecho sobre el diagrama y selecciona <strong>"Guardar imagen como..."</strong> (Save image as) para descargar la imagen en tu computadora.</p>
+    </div>
+</body>
+</html>

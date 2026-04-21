@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Real-Time Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="db-view.css?v=3">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="db-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-database"></i> DB Monitor</h2>
+                <span class="status-badge"><span class="pulse"></span>Live</span>
+            </div>
+            <div class="table-list-container">
+                <h3>Tables</h3>
+                <ul id="table-list" class="table-list">
+                    <li class="loading-item">Loading tables...</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-nav">
+                <div class="current-table-info">
+                    <h1 id="current-table-title">Select a Table</h1>
+                    <span id="row-count" class="row-count">0 rows</span>
+                </div>
+                <div class="actions">
+                    <!-- Botón Insertar -->
+                    <button id="insert-btn" class="btn btn-insert hidden" title="Insertar nueva fila">
+                        <i class="fas fa-plus"></i> Insertar Fila
+                    </button>
+                    <button id="refresh-btn" class="btn btn-icon" title="Refresh Now">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="auto-refresh-toggle">
+                        <label class="switch">
+                            <input type="checkbox" id="auto-refresh-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <span>Auto-Refresh (5s)</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="data-view-container">
+                <div id="data-table-wrapper" class="table-wrapper hidden">
+                    <table id="data-table" class="data-table">
+                        <thead id="data-table-head"></thead>
+                        <tbody id="data-table-body"></tbody>
+                    </table>
+                </div>
+                <div id="empty-state" class="empty-state">
+                    <i class="fas fa-table fa-3x"></i>
+                    <p>Select a table from the sidebar to view its contents.</p>
+                </div>
+                <div id="loading-state" class="empty-state hidden">
+                    <div class="spinner"></div>
+                    <p>Fetching data...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== MODAL DE INSERCIÓN ===== -->
+    <div id="insert-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-plus-circle"></i> Insertar fila en <span id="modal-table-name"></span></h2>
+                <button id="modal-close-btn" class="btn-icon modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="insert-form">
+                    <div id="form-fields" class="form-fields"></div>
+                    <div id="form-feedback" class="form-feedback hidden"></div>
+                    <div class="modal-footer">
+                        <button type="button" id="modal-cancel-btn" class="btn btn-cancel">Cancelar</button>
+                        <button type="submit" id="modal-submit-btn" class="btn btn-submit">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST NOTIFICATION ===== -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="db-view.js?v=4"></script>
+</body>
+</html>
