@@ -11,7 +11,7 @@ document.querySelector('#app').innerHTML = `
       <a href="/paciente.html" style="color:var(--primary-color); font-weight:bold; text-decoration:none;">VISTA DE PACIENTE ➔</a>
       <a href="/consultas.html" style="color:purple; font-weight:bold; text-decoration:none;">VISTA DE CONSULTAS RT ➔</a>
       <a href="/db-view.html" style="color:#ef4444; font-weight:bold; text-decoration:none;">⚙️ GESTIÓN GENERAL (CRUD Base de Datos) ➔</a>
-      <a href="/diagrama_logica.html" style="color:#0d9488; font-weight:bold; text-decoration:none;">🧩 DIAGRAMA DE LÓGICA ➔</a>
+      <a href="/docs/diagrama_logica.html" style="color:#0d9488; font-weight:bold; text-decoration:none;">🧩 DIAGRAMA DE LÓGICA ➔</a>
     </div>
 
     <!-- Pestañas Principales -->

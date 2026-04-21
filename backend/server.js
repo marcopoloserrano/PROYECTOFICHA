@@ -12,6 +12,7 @@ process.on('uncaughtException', (err) => {
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
 const db = require('./db');
 
 const app = express();
@@ -28,7 +29,9 @@ app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir archivos estáticos del frontend (HTML, CSS, JS)
-app.use(express.static('frontend'));
+app.use(express.static(path.join(__dirname, '../frontend')));
+// Servir archivos de documentación (Diagramas, etc)
+app.use('/docs', express.static(path.join(__dirname, '../documentacion')));
 
 // Basic route to test API and DB Connection
 app.get('/', async (req, res) => {

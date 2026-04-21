@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const logFile = path.join(__dirname, 'crash_log.txt');
+const logFile = path.join(__dirname, '../documentacion/crash_log.txt');
 
 function log(msg) {
     fs.appendFileSync(logFile, msg + '\n');
