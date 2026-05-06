@@ -68,4 +68,44 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Autenticar Paciente (CI y fecha_nacimiento)
+router.post('/paciente-login', async (req, res) => {
+  const { ci, fecha_nacimiento } = req.body;
+
+  if (!ci || !fecha_nacimiento) {
+    return res.status(400).json({ message: 'CI y Fecha de Nacimiento son obligatorios' });
+  }
+
+  try {
+    const [pacientes] = await db.query('SELECT * FROM Paciente WHERE ci = ? AND fecha_nacimiento = ?', [ci, fecha_nacimiento]);
+    
+    if (pacientes.length === 0) {
+      return res.status(401).json({ message: 'Credenciales inválidas o paciente no registrado' });
+    }
+
+    const paciente = pacientes[0];
+
+    // Buscar si tiene historial
+    const [historial] = await db.query('SELECT MAX(id_historial) as num_historial FROM Historial_Clinico WHERE id_paciente = ?', [paciente.id_paciente]);
+    const num_historial = historial[0].num_historial ? historial[0].num_historial : paciente.id_paciente;
+
+    res.json({
+      message: 'Inicio de sesión de paciente exitoso',
+      usuario: { 
+        id: paciente.id_paciente, 
+        nombre: paciente.nombre, 
+        apellido: paciente.apellido,
+        ci: paciente.ci,
+        id_cobertura: paciente.id_cobertura,
+        numero_historial: num_historial,
+        rol: 'paciente' 
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al iniciar sesión de paciente:', error);
+    res.status(500).json({ message: 'Error interno', error: error.message });
+  }
+});
+
 module.exports = router;

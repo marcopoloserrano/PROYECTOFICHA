@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/crear', async (req, res) => {
   // Extraemos las columnas exactas de tu tabla Paciente
-  const { nombre, apellido, ci, telefono, correo, id_cobertura } = req.body;
+  const { nombre, apellido, ci, fecha_nacimiento, telefono, correo, id_cobertura } = req.body;
 
   // Validación básica
   if (!nombre || !apellido || !ci) {
@@ -28,13 +28,14 @@ router.post('/crear', async (req, res) => {
   try {
     // Consulta SQL usando los nombres reales de ts columnas
     const sqlQuery = `
-      INSERT INTO Paciente (nombre, apellido, ci, telefono, correo, id_cobertura) 
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO Paciente (nombre, apellido, ci, fecha_nacimiento, telefono, correo, id_cobertura) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const valores = [
       nombre, 
       apellido, 
       ci, 
+      fecha_nacimiento || null,
       telefono || null, 
       correo || null, 
       id_cobertura || null 

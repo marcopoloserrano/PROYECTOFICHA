@@ -1,19 +1,24 @@
+const userAuth = JSON.parse(localStorage.getItem('userAuth') || 'null');
+if (!userAuth || userAuth.rol !== 'paciente') {
+    window.location.href = '/login.html';
+}
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = '/api';
 let medicosDisponibles = [];
 let todosLosHorarios = [];
-let pacientesTotal = []; // Cache para búsqueda
 let horarioSeleccionadoCache = null;
 let horaSeleccionadaFinal = null;
 
+// Convert cobertura ID a texto
+const coberturasMap = { 1: 'SUS', 2: 'PARTICULAR', 3: 'SEGURO' };
+const coberturaTexto = coberturasMap[userAuth.id_cobertura] || 'No definida';
+
 document.querySelector('#patient-app').innerHTML = `
   <div class="glass-card" style="border-top: 5px solid var(--primary-color);">
-    <div style="margin-bottom: 1rem;">
-      <a href="/index.html" style="color:#64748b; font-size:0.9rem; text-decoration:none;">⬅ Volver a Recepción (Admin)</a>
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+      <h1 style="margin: 0; display: flex; align-items: center; gap: 10px;">🏥 Portal del Paciente</h1>
+      <button id="btn-logout" class="action-btn" style="background: #ef4444; width: auto; font-size: 0.8rem; padding: 6px 12px;">Cerrar Sesión</button>
     </div>
-
-    <h1>🏥 Portal del Paciente</h1>
-    <p class="subtitle">Agenda tu visita con búsqueda rápida y selección visual.</p>
     
     <div id="ausencias-alert-box" style="margin-bottom: 1.5rem; display:none; background:#ecfdf5; border: 1px solid #10b981; border-radius: 12px; padding: 1.2rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);">
       <h3 style="color:#065f46; margin-top:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
@@ -23,19 +28,27 @@ document.querySelector('#patient-app').innerHTML = `
       </ul>
     </div>
 
+    <!-- TARJETA PERFIL DEL PACIENTE -->
+    <div style="background: rgba(255,255,255,0.8); border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="flex: 1; min-width: 200px;">
+            <p style="margin:0; font-size:0.8rem; color:#64748b; font-weight:bold;">Paciente Autenticado</p>
+            <p style="margin:5px 0 0 0; font-size:1.2rem; color:#0f172a; font-weight:800;">${userAuth.nombre} ${userAuth.apellido}</p>
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+            <p style="margin:0; font-size:0.8rem; color:#64748b; font-weight:bold;">Carnet (C.I.)</p>
+            <p style="margin:5px 0 0 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${userAuth.ci}</p>
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+            <p style="margin:0; font-size:0.8rem; color:#64748b; font-weight:bold;">Forma de Pago</p>
+            <p style="margin:5px 0 0 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${coberturaTexto}</p>
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+            <p style="margin:0; font-size:0.8rem; color:#64748b; font-weight:bold;">N° Historial Médico</p>
+            <p style="margin:5px 0 0 0; font-size:1.1rem; color:var(--primary-color); font-weight:800;">#${userAuth.numero_historial}</p>
+        </div>
+    </div>
+    
     <form id="patient-ficha-form">
-      <!-- PASO 1: PACIENTE CON BÚSQUEDA POR CI -->
-      <div class="form-group" style="background: rgba(255,255,255,0.4); padding: 1.2rem; border-radius: 12px;">
-        <label style="color:var(--primary-color); font-weight:800;">Paso 1: Busca tu perfil por C.I.</label>
-        <div class="search-container">
-            <input type="text" id="paciente-search-input" placeholder="Escribe tu número de carnet..." autocomplete="off">
-            <div id="paciente-suggestions" class="suggestions-list"></div>
-        </div>
-        <input type="hidden" id="id_paciente" required>
-        <div id="paciente-seleccionado-info" style="margin-top:10px; font-size:0.9rem; font-weight:700; color:var(--primary-color); display:none;">
-            ✅ Paciente identificado: <span id="nombre-paciente-display"></span>
-        </div>
-      </div>
 
       <!-- PASO 2: ESPECIALIDADES CON BOTONES -->
       <div class="form-group" style="margin-top:1.5rem;">
@@ -108,12 +121,6 @@ document.querySelector('#patient-app').innerHTML = `
 `;
 
 // Elementos UI
-const searchInput = document.getElementById('paciente-search-input');
-const suggestionsList = document.getElementById('paciente-suggestions');
-const inputPacienteId = document.getElementById('id_paciente');
-const pacienteDisplay = document.getElementById('paciente-seleccionado-info');
-const nombrePacienteText = document.getElementById('nombre-paciente-display');
-
 const especialidadesGrid = document.getElementById('especialidades-grid');
 const inputEspecialidadId = document.getElementById('id_especialidad');
 const selectMedico = document.getElementById('id_medico');
@@ -131,13 +138,15 @@ const msg = document.getElementById('patient-message');
 const modalOverlay = document.getElementById('modal-confirm');
 const btnCerrarModal = document.getElementById('btn-cerrar-modal');
 
+document.getElementById('btn-logout').addEventListener('click', () => {
+    localStorage.removeItem('userAuth');
+    localStorage.removeItem('userRole');
+    window.location.href = '/login.html';
+});
+
 async function inicializarPortal() {
   try {
-    // 1. Cargar Pacientes para búsqueda
-    const req1 = await fetch(API_URL + '/pacientes');
-    pacientesTotal = await req1.json();
-
-    // 2. Cargar Especialidades en botones
+    // 1. Cargar Especialidades en botones
     const reqEsp = await fetch(API_URL + '/especialidades');
     const especialidades = await reqEsp.json();
     renderEspecialidades(especialidades);
@@ -178,46 +187,7 @@ async function inicializarPortal() {
 }
 inicializarPortal();
 
-// --- LÓGICA DE BÚSQUEDA DE PACIENTE ---
-searchInput.addEventListener('input', (e) => {
-    const val = e.target.value.trim().toLowerCase();
-    inputPacienteId.value = ""; // Reset ID while typing
-    pacienteDisplay.style.display = 'none';
-
-    if (val.length < 2) {
-        suggestionsList.style.display = 'none';
-        return;
-    }
-
-    const matches = pacientesTotal.filter(p => p.ci.toLowerCase().includes(val)).slice(0, 5);
-    
-    if (matches.length > 0) {
-        suggestionsList.innerHTML = '';
-        matches.forEach(p => {
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.innerHTML = `<span>${p.nombre} ${p.apellido}</span> <b>CI: ${p.ci}</b>`;
-            div.onclick = () => {
-                inputPacienteId.value = p.id_paciente;
-                nombrePacienteText.textContent = `${p.nombre} ${p.apellido} (CI: ${p.ci})`;
-                pacienteDisplay.style.display = 'block';
-                searchInput.value = p.ci;
-                suggestionsList.style.display = 'none';
-            };
-            suggestionsList.appendChild(div);
-        });
-        suggestionsList.style.display = 'block';
-    } else {
-        suggestionsList.style.display = 'none';
-    }
-});
-
-// Cerrar sugerencias al hacer clic fuera
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.search-container')) {
-        suggestionsList.style.display = 'none';
-    }
-});
+// (Búsqueda eliminada, ahora usa el userAuth de localStorage para el ID del paciente)
 
 // --- LÓGICA DE ESPECIALIDADES ---
 function renderEspecialidades(list) {
@@ -285,10 +255,13 @@ selectMedico.addEventListener('change', (e) => {
     horariosDr.forEach(h => {
       const targetIndex = indicesSemana[h.dia_semana];
       if (targetIndex >= hoyIndex) {
+          const fechaReal = obtenerProximaFecha(h.dia_semana);
+          const [y, m, d] = fechaReal.split('-');
+
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'horario-btn';
-          btn.innerHTML = `${h.dia_semana}<br><small>${h.hora_inicio.substring(0,5)} - ${h.hora_fin.substring(0,5)}</small>`;
+          btn.innerHTML = `<b>${h.dia_semana} ${d}/${m}</b><br><small>${h.hora_inicio.substring(0,5)} - ${h.hora_fin.substring(0,5)}</small>`;
           btn.onclick = () => seleccionarHorario(h, btn);
           horariosBtnList.appendChild(btn);
       }
@@ -361,7 +334,12 @@ async function consultarDisponibilidad(fechaValue, idHorario) {
              return;
           }
           slotsGrid.innerHTML = '';
-          const todosLosBloques = generarIntervalos(horarioSeleccionadoCache.hora_inicio, horarioSeleccionadoCache.hora_fin);
+          let todosLosBloques = generarIntervalos(horarioSeleccionadoCache.hora_inicio, horarioSeleccionadoCache.hora_fin);
+          
+          // Limitamos a solo las primeras "N" fichas que el médico tiene asignadas por día
+          if (horarioSeleccionadoCache.limite_fichas) {
+              todosLosBloques = todosLosBloques.slice(0, horarioSeleccionadoCache.limite_fichas);
+          }
           let hayDisponibles = false;
           todosLosBloques.forEach(hora => {
               const btn = document.createElement('button');
@@ -397,7 +375,7 @@ formFicha.addEventListener('submit', async (e) => {
   btnSubmit.disabled = true;
 
   const data = {
-    id_paciente: parseInt(inputPacienteId.value),
+    id_paciente: userAuth.id, // Obtenido del session
     id_medico: parseInt(selectMedico.value),
     id_horario: parseInt(inputHorarioId.value),
     fecha: inputFecha.value,
@@ -408,7 +386,7 @@ formFicha.addEventListener('submit', async (e) => {
   try {
     const response = await fetch(API_URL + '/fichas/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (response.ok) {
-      document.getElementById('res-paciente').textContent = nombrePacienteText.textContent;
+      document.getElementById('res-paciente').textContent = `${userAuth.nombre} ${userAuth.apellido}`;
       document.getElementById('res-especialidad').textContent = document.querySelector('.especialidad-btn.active').textContent;
       document.getElementById('res-medico').textContent = selectMedico.options[selectMedico.selectedIndex].text;
       document.getElementById('res-fecha').textContent = formatearFecha(data.fecha);
@@ -426,7 +404,6 @@ btnCerrarModal.onclick = () => {
     modalOverlay.style.display = 'none';
     formFicha.reset();
     resetValidation();
-    pacienteDisplay.style.display = 'none';
     stepHorario.style.display = 'none';
     document.querySelectorAll('.especialidad-btn').forEach(b => b.classList.remove('active'));
     selectMedico.innerHTML = '<option value="">Primero elige una especialidad</option>'; selectMedico.disabled = true;

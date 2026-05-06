@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS Paciente (
     nombre VARCHAR(100) NOT NULL,
     apellido VARCHAR(100) NOT NULL,
     ci VARCHAR(20) UNIQUE NOT NULL,
+    fecha_nacimiento DATE NULL,
     telefono VARCHAR(20),
     correo VARCHAR(100),
     id_cobertura INT,

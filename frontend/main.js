@@ -1,267 +1,368 @@
+const userAuth = JSON.parse(localStorage.getItem('userAuth') || 'null');
+if (!userAuth || userAuth.rol === 'paciente') {
+    window.location.href = '/login.html';
+}
+document.body.classList.add('admin-layout');
+const isSecretaria = userAuth.rol === 'secretaria';
 
-const API_URL = 'http://localhost:4000/api';
+const API_URL = '/api';
 let pacientesGlobales = [];
 let medicosGlobales = [];
 let especialidadesGlobales = [];
 let fichasAgendadasCache = [];
 
+let tabsHtml = `
+  <!-- Logo/Info -->
+  <div style="padding: 0 10px; margin-bottom: 20px;">
+    <h2 style="margin:0; color:var(--primary-color);">🏥 Clínica</h2>
+    <p style="margin:5px 0 0; font-size:0.8rem; color:#64748b;">Panel de Control</p>
+    <div style="margin-top: 10px; background:#f1f5f9; padding:8px; border-radius:8px; font-size:0.8rem;">
+      👤 <b>${userAuth.nombre || "Usuario"}</b><br>
+      <span style="color:var(--primary-color); text-transform:capitalize;">${userAuth.rol}</span>
+    </div>
+  </div>
+  
+  <button class="tab-btn active" id="tab-lista">📋 Dasboard Citas</button>
+  <button class="tab-btn" id="tab-ficha">🩺 Agendar Cita</button>
+  <button class="tab-btn" id="tab-paciente">👤 Gestionar Pacientes</button>
+  <button class="tab-btn" id="tab-ausencia">🛑 Permisos</button>
+`;
+
+if (!isSecretaria) {
+    tabsHtml += `
+      <hr style="border-top:1px solid #cbd5e1; margin: 10px 0; width:100%;">
+      <p style="font-size:0.7rem; color:#94a3b8; font-weight:bold; margin-left:10px; text-transform:uppercase;">Administración</p>
+      <button class="tab-btn" id="tab-medico">👨‍⚕️ Médicos</button>
+      <button class="tab-btn" id="tab-horario">🕒 Horarios</button>
+      <button class="tab-btn" id="tab-especialidad">⚕️ Especialidades</button>
+      <button class="tab-btn" id="tab-gestion">⚙️ CRUD / BD</button>
+      <button class="tab-btn" id="tab-usuario">🔑 Usuarios de Sistema</button>
+      <a href="/docs/diagrama_logica.html" target="_blank" style="text-decoration:none;" class="tab-btn">🧩 Ver Diagrama Lógica</a>
+    `;
+}
+
+tabsHtml += `
+  <div style="margin-top: auto;">
+    <button id="btn-logout" style="width:100%; border:none; background:#fee2e2; color:#991b1b; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Cerrar Sesión</button>
+  </div>
+`;
+
 document.querySelector('#app').innerHTML = `
-  <div class="glass-card">
-    <div style="margin-bottom: 1.5rem; display: flex; gap: 20px; flex-wrap: wrap;">
-      <a href="/paciente.html" style="color:var(--primary-color); font-weight:bold; text-decoration:none;">VISTA DE PACIENTE ➔</a>
-      <a href="/consultas.html" style="color:purple; font-weight:bold; text-decoration:none;">VISTA DE CONSULTAS RT ➔</a>
-      <a href="/db-view.html" style="color:#ef4444; font-weight:bold; text-decoration:none;">⚙️ GESTIÓN GENERAL (CRUD Base de Datos) ➔</a>
-      <a href="/docs/diagrama_logica.html" style="color:#0d9488; font-weight:bold; text-decoration:none;">🧩 DIAGRAMA DE LÓGICA ➔</a>
-    </div>
+  <!-- BARRA LATERAL -->
+  <div class="sidebar">
+    ${tabsHtml}
+  </div>
 
-    <!-- Pestañas Principales -->
-    <div class="tabs" style="flex-wrap: wrap; gap: 4px;">
-      <button class="tab-btn active" id="tab-lista" style="font-size: 0.8rem; border-bottom: 2px solid green;">📋 Ver Citas</button>
-      <button class="tab-btn" id="tab-ficha" style="font-size: 0.8rem">🩺 Agendar</button>
-      <button class="tab-btn" id="tab-horario" style="font-size: 0.8rem">🕒 Horarios</button>
-      <button class="tab-btn" id="tab-ausencia" style="font-size: 0.8rem; border-bottom: 2px solid red;">🛑 Permiso</button>
-      <button class="tab-btn" id="tab-paciente" style="font-size: 0.8rem">👤 Paciente</button>
-      <button class="tab-btn" id="tab-medico" style="font-size: 0.8rem">👨‍⚕️ Médico</button>
-      <button class="tab-btn" id="tab-especialidad" style="font-size: 0.8rem">⚕️ Esp.</button>
-      <button class="tab-btn" id="tab-gestion" style="font-size: 0.8rem; border-bottom: 2px solid orange;">⚙️ CRUD/Gestión</button>
-    </div>
-
-    <!-- VISTA 0: LISTADO DE FICHAS DIARIAS -->
-    <div id="vista-lista-fichas">
-      <h1>Dashboard de Citas</h1>
-      <p class="subtitle">Visualiza todas las fichas médicas ya reservadas.</p>
-      
-      <div class="form-group" style="max-width:250px;">
-         <label>Filtrar por Fecha:</label>
-         <input type="date" id="filtro-fecha-ficha">
-      </div>
-      
-      <div style="overflow-x:auto; margin-top:1rem;">
-        <table style="width:100%; border-collapse: collapse; text-align:left; font-size: 0.9rem;">
-          <thead>
-            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
-              <th style="padding:10px;">ID</th>
-              <th style="padding:10px;">Fecha y Hora</th>
-              <th style="padding:10px;">Paciente</th>
-              <th style="padding:10px;">Doctor</th>
-              <th style="padding:10px;">Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-fichas-body">
-             <tr><td colspan="5" style="text-align:center; padding:10px;">Cargando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- VISTA 1: AGENDAR FICHA -->
-    <div id="vista-ficha" style="display: none;">
-      <h1>Agendar Cita (Manual)</h1>
-      <form id="ficha-form">
-        <div class="form-group"><label>Paciente</label><select id="seleccionar-paciente" required><option value="">Cargando...</option></select></div>
-        <div class="form-group"><label>Médico</label><select id="seleccionar-medico" required><option value="">Cargando...</option></select></div>
-        <div class="row">
-          <div class="form-group"><label>Fecha</label><input type="date" id="fecha_ficha" required></div>
-          <div class="form-group"><label>Hora</label><input type="time" id="hora_ficha" required></div>
-        </div>
-        <button type="submit" class="action-btn">Agendar Ficha Médica</button>
-      </form>
-    </div>
-
-    <!-- VISTA 2: AGREGAR HORARIO A MÉDICO -->
-    <div id="vista-horario" style="display: none;">
-      <h1>Crear Calendario Semanal</h1>
-      <form id="horario-form">
-        <div class="form-group"><label>Médico Tratante</label><select id="reg-horario-medico" required></select></div>
+  <!-- AREA PRINCIPAL -->
+  <div class="main-content">
+    <div class="admin-card">
+    
+      <!-- VISTA 0: LISTADO DE FICHAS DIARIAS (Modificado para agrupar por especialidad) -->
+      <div id="vista-lista-fichas">
+        <h1>Monitor Diario de Citas</h1>
+        <p class="subtitle">Visualiza todas las fichas reservadas para el día de hoy o filtra por fecha.</p>
         
-        <div class="form-group" style="background:#f8fafc; padding:10px; border-radius:5px; border:1px solid #e2e8f0;">
-          <label style="margin-bottom:5px; color:#1e293b;">Días de Trabajo (Selecciona múltiples):</label>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; font-size: 0.9rem;">
-            <label><input type="checkbox" name="dias_chk" value="Lunes"> Lunes</label>
-            <label><input type="checkbox" name="dias_chk" value="Martes"> Martes</label>
-            <label><input type="checkbox" name="dias_chk" value="Miércoles"> Miércoles</label>
-            <label><input type="checkbox" name="dias_chk" value="Jueves"> Jueves</label>
-            <label><input type="checkbox" name="dias_chk" value="Viernes"> Viernes</label>
-            <label><input type="checkbox" name="dias_chk" value="Sábado"> Sábado</label>
-            <label><input type="checkbox" name="dias_chk" value="Domingo"> Domingo</label>
+        <div class="form-group" style="max-width:250px;">
+           <label>Filtrar por Fecha:</label>
+           <input type="date" id="filtro-fecha-ficha">
+        </div>
+        
+        <div id="tabla-fichas-agrupadas" style="margin-top:1.5rem;">
+           <p>Cargando dashboard...</p>
+        </div>
+      </div>
+
+      <!-- VISTA 1: AGENDAR FICHA -->
+      <div id="vista-ficha" style="display: none;">
+        <h1>Agendar Cita (Manual)</h1>
+        <form id="ficha-form">
+          <div class="form-group"><label>Paciente</label><select id="seleccionar-paciente" required><option value="">Cargando...</option></select></div>
+          <div class="form-group"><label>Médico</label><select id="seleccionar-medico" required><option value="">Cargando...</option></select></div>
+          
+          <div id="manual-dias-step" style="display:none; margin-top: 1rem;">
+             <label style="color:#0f172a; font-weight:800; margin-bottom: 10px; display:block; color:var(--primary-color);">Día de Atención</label>
+             <div id="manual-dias-container" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+          </div>
+          
+          <div id="manual-slots-step" style="display:none; background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-top: 1rem;">
+             <label style="color:#0f172a; font-weight:800; margin-bottom: 15px; display:block; color:var(--primary-color);">Horario de la Cita</label>
+             <div id="manual-slots-container" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+             <p id="manual-slot-selected-text" style="color:var(--primary-color); font-size:1.1rem; font-weight:bold; margin-top:15px; display:none; text-align:center; padding-top:10px; border-top:1px dashed #cbd5e1;"></p>
+          </div>
+
+          <input type="hidden" id="fecha_ficha" required>
+          <input type="hidden" id="hora_ficha" required>
+
+          <button type="submit" class="action-btn" id="btn-submit-manual" disabled style="margin-top:20px;">Agendar Ficha Médica</button>
+        </form>
+      </div>
+
+      <!-- VISTA PACIENTE, AUSENCIAS y DEMÁS (Mantenemos HTML estructural) -->
+      <div id="vista-ausencia" style="display: none;">
+          <h1>Excepción o Permiso Méd.</h1>
+          <form id="ausencia-form">
+              <div class="form-group"><label>Afectar al Médico:</label><select id="reg-ausencia-medico" required></select></div>
+              <div class="row">
+                  <div class="form-group"><label>Fecha Inicio:</label><input type="date" id="ausencia_fecha_inicio" required></div>
+                  <div class="form-group"><label>Fecha Fin (Mismo día si vacío):</label><input type="date" id="ausencia_fecha_fin"></div>
+              </div>
+              <div class="form-group"><label>Motivo a mostrar al paciente (Opcional):</label><input type="text" id="ausencia_motivo" placeholder="Ej. Permiso médico"></div>
+              <button type="submit" class="action-btn" style="background:#dc2626;">Deshabilitar Reservas ese Día</button>
+          </form>
+      </div>
+
+      <div id="vista-paciente" style="display: none;">
+        <h1>Registro de Pacientes</h1>
+        <form id="paciente-form">
+          <div class="row">
+            <div class="form-group"><label>Nombre</label><input type="text" id="nombre" required></div>
+            <div class="form-group"><label>Apellido</label><input type="text" id="apellido" required></div>
+          </div>
+          <div class="row">
+            <div class="form-group"><label>CI</label><input type="text" id="ci" required></div>
+            <!-- SE AGREGÓ FECHA DE NACIMIENTO AQUI POR PETICION 2 -->
+            <div class="form-group"><label>Fecha Nacimiento</label><input type="date" id="fecha_nac" required></div>
+          </div>
+          <div class="row">
+            <div class="form-group"><label>Teléfono</label><input type="text" id="telefono"></div>
+            <div class="form-group"><label>Correo</label><input type="email" id="correo"></div>
+          </div>
+          <div class="form-group">
+            <label>Cobertura</label>
+            <select id="id_cobertura" required><option value="1">SUS</option><option value="2">PARTICULAR</option><option value="3">SEGURO</option></select>
+          </div>
+          <button type="submit" class="action-btn">Registrar Paciente</button>
+        </form>
+      </div>
+
+      <!-- EXCLUSIVOS ADMIN -->
+      ${!isSecretaria ? `
+        <div id="vista-medico" style="display: none;">
+          <h1>Registro de Médico</h1>
+          <form id="medico-form">
+            <div class="row">
+                <div class="form-group"><label>Nombre</label><input type="text" id="med_nombre" required></div>
+                <div class="form-group"><label>Apellido</label><input type="text" id="med_apellido" required></div>
+            </div>
+            <div class="form-group"><label>Teléfono</label><input type="text" id="med_telefono"></div>
+            <div class="form-group">
+                <label>Especialidades</label>
+                <select id="med_especialidades" multiple style="height: 100px; padding: 0.5rem;" required></select>
+            </div>
+            <button type="submit" class="action-btn">Registrar Médico</button>
+          </form>
+        </div>
+
+        <div id="vista-especialidad" style="display: none;">
+            <h1>Crear Especialidad</h1>
+            <form id="especialidad-form">
+               <div class="form-group"><label>Nombre Especialidad</label><input type="text" id="esp_nombre" required></div>
+               <button type="submit" class="action-btn">Crear Especialidad</button>
+            </form>
+        </div>
+
+        <div id="vista-horario" style="display: none;">
+          <h1>Crear Calendario Semanal</h1>
+          <form id="horario-form">
+            <div class="form-group"><label>Médico Tratante</label><select id="reg-horario-medico" required></select></div>
+            <div class="form-group" style="background:#f8fafc; padding:10px; border-radius:5px; border:1px solid #e2e8f0;">
+              <label style="margin-bottom:5px; color:#1e293b;">Días de Trabajo (Selecciona múltiples):</label>
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; font-size: 0.9rem;">
+                <label><input type="checkbox" name="dias_chk" value="Lunes"> Lunes</label>
+                <label><input type="checkbox" name="dias_chk" value="Martes"> Martes</label>
+                <label><input type="checkbox" name="dias_chk" value="Miércoles"> Miércoles</label>
+                <label><input type="checkbox" name="dias_chk" value="Jueves"> Jueves</label>
+                <label><input type="checkbox" name="dias_chk" value="Viernes"> Viernes</label>
+                <label><input type="checkbox" name="dias_chk" value="Sábado"> Sábado</label>
+                <label><input type="checkbox" name="dias_chk" value="Domingo"> Domingo</label>
+              </div>
+            </div>
+            <div class="row">
+              <div class="form-group"><label>Hora de Ingreso</label><input type="time" id="hora_inicio" required></div>
+              <div class="form-group"><label>Hora de Salida</label><input type="time" id="hora_fin" required></div>
+            </div>
+            <div class="form-group"><label>Cupos Máximos por Día</label><input type="number" id="limite_fichas" required min="1" value="10"></div>
+            <button type="submit" class="action-btn" id="btn-horario">Inscribir Todo el Horario</button>
+          </form>
+        </div>
+
+        <div id="vista-gestion" style="display: none;">
+          <h1>Gestión Integral Interactiva</h1>
+          <select id="gestion-tabla-select" style="padding:10px; margin-bottom:1rem; width:100%; border:1px solid #cbd5e1; border-radius:5px;">
+            <option value="paciente">👤 Pacientes</option>
+            <option value="medico">👨‍⚕️ Médicos</option>
+            <option value="especialidad">⚕️ Especialidades</option>
+            <option value="ficha">📋 Fichas Asignadas</option>
+            <option value="ausencia_medico">🛑 Permisos y Ausencias</option>
+            <option value="horario">🕒 Horarios Médicos</option>
+          </select>
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse: collapse; text-align:left; font-size: 0.85rem; background:white;">
+               <thead id="gestion-thead"></thead>
+               <tbody id="gestion-tbody"></tbody>
+            </table>
           </div>
         </div>
-        
-        <div class="row">
-          <div class="form-group"><label>Hora de Ingreso</label><input type="time" id="hora_inicio" required></div>
-          <div class="form-group"><label>Hora de Salida</label><input type="time" id="hora_fin" required></div>
-        </div>
-        <div class="form-group"><label>Cupos Máximos por Día</label><input type="number" id="limite_fichas" required min="1" value="10"></div>
-        <button type="submit" class="action-btn" id="btn-horario">Inscribir Todo el Horario</button>
-      </form>
-    </div>
 
-    <!-- VISTA EXCEPCIÓN: MARCAR AUSENCIA -->
-    <div id="vista-ausencia" style="display: none;">
-        <h1>Excepción o Permiso Méd.</h1>
-        <p class="subtitle">Bloquea un día laboral para evitar que se agenden citas si el Doctor no asiste.</p>
-        <form id="ausencia-form">
-            <div class="form-group"><label>Afectar al Médico:</label><select id="reg-ausencia-medico" required></select></div>
-            <div class="row">
-                <div class="form-group"><label>Fecha Inicio:</label><input type="date" id="ausencia_fecha_inicio" required></div>
-                <div class="form-group"><label>Fecha Fin (Mismo día si vacío):</label><input type="date" id="ausencia_fecha_fin"></div>
-            </div>
-            <div class="form-group"><label>Motivo a mostrar al paciente (Opcional):</label><input type="text" id="ausencia_motivo" placeholder="Ej. Permiso médico, Vacaciones, etc."></div>
-            <button type="submit" class="action-btn" style="background:#dc2626;">Deshabilitar Reservas ese Día</button>
-        </form>
-    </div>
-
-    <!-- VISTA 3: NUEVA ESPECIALIDAD -->
-    <div id="vista-especialidad" style="display: none;">
-        <h1>Crear Especialidad</h1>
-        <form id="especialidad-form">
-           <div class="form-group"><label>Nombre Especialidad</label><input type="text" id="esp_nombre" required></div>
-           <button type="submit" class="action-btn">Crear Especialidad</button>
-        </form>
-    </div>
-
-    <!-- VISTA 4: REGISTRAR MÉDICO -->
-    <div id="vista-medico" style="display: none;">
-      <h1>Registro de Médico</h1>
-      <form id="medico-form">
-        <div class="row">
-            <div class="form-group"><label>Nombre</label><input type="text" id="med_nombre" required></div>
-            <div class="form-group"><label>Apellido</label><input type="text" id="med_apellido" required></div>
-        </div>
-        <div class="form-group"><label>Teléfono</label><input type="text" id="med_telefono"></div>
-        <div class="form-group">
-            <label>Especialidades</label>
-            <select id="med_especialidades" multiple style="height: 100px; padding: 0.5rem;" required></select>
-        </div>
-        <button type="submit" class="action-btn">Registrar Médico</button>
-      </form>
-    </div>
-
-    <!-- VISTA 5: REGISTRAR PACIENTE -->
-    <div id="vista-paciente" style="display: none;">
-      <h1>Registro de Pacientes</h1>
-      <form id="paciente-form">
-        <div class="row">
-          <div class="form-group"><label>Nombre</label><input type="text" id="nombre" required></div>
-          <div class="form-group"><label>Apellido</label><input type="text" id="apellido" required></div>
-        </div>
-        <div class="form-group"><label>CI</label><input type="text" id="ci" required></div>
-        <div class="row">
-          <div class="form-group"><label>Teléfono</label><input type="text" id="telefono"></div>
-          <div class="form-group"><label>Correo</label><input type="email" id="correo"></div>
-        </div>
-        <div class="form-group">
-          <label>Cobertura</label>
-          <select id="id_cobertura" required><option value="1">SUS</option><option value="2">PARTICULAR</option><option value="3">SEGURO</option></select>
-        </div>
-        <button type="submit" class="action-btn">Registrar Paciente</button>
-      </form>
-    </div>
-
-    <!-- VISTA GESTIÓN TOTAL INTERACTIVA -->
-    <div id="vista-gestion" style="display: none;">
-      <h1>Gestión Integral Interactiva</h1>
-      <p class="subtitle">Visualiza, modifica o elimina los registros de pacientes, médicos, especialidades y fichas directamente desde aquí.</p>
-      
-      <select id="gestion-tabla-select" style="padding:10px; margin-bottom:1rem; width:100%; border:1px solid #cbd5e1; border-radius:5px; font-size:1.1rem;">
-        <option value="paciente">👤 Pacientes</option>
-        <option value="medico">👨‍⚕️ Médicos</option>
-        <option value="especialidad">⚕️ Especialidades</option>
-        <option value="ficha">📋 Fichas Asignadas</option>
-        <option value="ausencia_medico">🛑 Permisos y Ausencias</option>
-        <option value="horario">🕒 Horarios Médicos</option>
-      </select>
-      
-      <div style="overflow-x:auto;">
-        <table style="width:100%; border-collapse: collapse; text-align:left; font-size: 0.85rem; background:white; border-radius:5px; overflow:hidden; border: 1px solid #e2e8f0;">
-           <thead id="gestion-thead"></thead>
-           <tbody id="gestion-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- MODAL DE EDICIÓN PARA VISTA GESTIÓN -->
-    <div id="gestion-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
-       <div style="background:white; padding:2rem; border-radius:8px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-           <h2 id="gestion-modal-title" style="margin-top:0; color:var(--primary-color);">Modificar Registro</h2>
-           <form id="gestion-modal-form">
-               <div id="gestion-modal-fields"></div>
-               <div style="display:flex; gap:10px; margin-top:20px;">
-                   <button type="button" style="padding:10px; border:none; background:#cbd5e1; color:#334155; border-radius:5px; cursor:pointer;" onclick="document.getElementById('gestion-modal').style.display='none'">Cancelar</button>
-                   <button type="submit" class="action-btn" style="flex:1;">Guardar Cambios</button>
+        <div id="vista-usuario" style="display: none;">
+            <h1>Crear Nuevo Usuario Personal</h1>
+            <p class="subtitle">Registra nuevas Secretarias o Administradores de Sistema.</p>
+            <form id="usuario-form">
+               <div class="form-group"><label>Nombre de Usuario</label><input type="text" id="usr_nombre" required></div>
+               <div class="form-group"><label>Contraseña</label><input type="password" id="usr_pass" required></div>
+               <div class="form-group"><label>Rol</label>
+                   <select id="usr_rol" required>
+                       <option value="1">Administrador</option>
+                       <option value="2">Secretaria / Recepcionista</option>
+                   </select>
                </div>
-           </form>
-       </div>
+               <button type="submit" class="action-btn">Crear Usuario</button>
+            </form>
+        </div>
+      ` : ''}
+
+      <div id="status-message" class="message"></div>
     </div>
-
-    <div id="status-message" class="message"></div>
   </div>
-`
+  
+  ${!isSecretaria ? `
+  <!-- MODAL DE EDICIÓN PARA VISTA GESTIÓN -->
+  <div id="gestion-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+     <div style="background:white; padding:2rem; border-radius:8px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
+         <h2 id="gestion-modal-title">Modificar Registro</h2>
+         <form id="gestion-modal-form">
+             <div id="gestion-modal-fields"></div>
+             <div style="display:flex; gap:10px; margin-top:20px;">
+                 <button type="button" style="padding:10px;" onclick="document.getElementById('gestion-modal').style.display='none'">Cancelar</button>
+                 <button type="submit" class="action-btn" style="flex:1;">Guardar Cambios</button>
+             </div>
+         </form>
+     </div>
+  </div>
+  ` : ''}
+`;
 
-// Navegación
+document.getElementById('btn-logout').addEventListener('click', () => {
+    localStorage.removeItem('userAuth');
+    window.location.href = '/login.html';
+});
+
+// Navegación Dinámica
 const tabs = {
   lista: { btn: document.getElementById('tab-lista'), vista: document.getElementById('vista-lista-fichas') },
   ficha: { btn: document.getElementById('tab-ficha'), vista: document.getElementById('vista-ficha') },
-  horario: { btn: document.getElementById('tab-horario'), vista: document.getElementById('vista-horario') },
   ausencia: { btn: document.getElementById('tab-ausencia'), vista: document.getElementById('vista-ausencia') },
-  especialidad: { btn: document.getElementById('tab-especialidad'), vista: document.getElementById('vista-especialidad') },
-  medico: { btn: document.getElementById('tab-medico'), vista: document.getElementById('vista-medico') },
-  paciente: { btn: document.getElementById('tab-paciente'), vista: document.getElementById('vista-paciente') },
-  gestion: { btn: document.getElementById('tab-gestion'), vista: document.getElementById('vista-gestion') }
+  paciente: { btn: document.getElementById('tab-paciente'), vista: document.getElementById('vista-paciente') }
 };
+
+if (!isSecretaria) {
+  tabs.horario = { btn: document.getElementById('tab-horario'), vista: document.getElementById('vista-horario') };
+  tabs.especialidad = { btn: document.getElementById('tab-especialidad'), vista: document.getElementById('vista-especialidad') };
+  tabs.medico = { btn: document.getElementById('tab-medico'), vista: document.getElementById('vista-medico') };
+  tabs.gestion = { btn: document.getElementById('tab-gestion'), vista: document.getElementById('vista-gestion') };
+  tabs.usuario = { btn: document.getElementById('tab-usuario'), vista: document.getElementById('vista-usuario') };
+}
+
 const statusMessage = document.getElementById('status-message');
 
 function activateTab(key) {
   Object.values(tabs).forEach(t => { t.btn.classList.remove('active'); t.vista.style.display = 'none'; });
   tabs[key].btn.classList.add('active'); tabs[key].vista.style.display = 'block'; statusMessage.className = 'message';
   
-  if (key === 'lista') renderFichas(); // Renderizar tabla al entrar a su pestaña
-  if (key === 'gestion') cargarDatosGestion(); // Refrescar Geston
+  if (key === 'lista') renderFichasAgrupadas();
+  if (key === 'gestion' && !isSecretaria) cargarDatosGestion();
 }
 Object.keys(tabs).forEach(key => { tabs[key].btn.addEventListener('click', () => activateTab(key)); });
 
-/* LOGICA: LISTADO TABLA DE FICHAS DIARIAS */
+/* LOGICA: LISTADO TABLA DE FICHAS DIARIAS AGRUPADAS POR ESPECIALIDAD */
 async function cargarFichasDesdeBackend() {
    try {
        const res = await fetch(API_URL + '/fichas');
        fichasAgendadasCache = await res.json();
-       renderFichas();
+       renderFichasAgrupadas();
    } catch(e) { console.error("Error al obtener fichas", e); }
 }
 
-function renderFichas() {
-    const tbody = document.getElementById('tabla-fichas-body');
-    tbody.innerHTML = '';
+function renderFichasAgrupadas() {
+    const contenedor = document.getElementById('tabla-fichas-agrupadas');
+    contenedor.innerHTML = '';
     
-    // Aplicar Filtro Si Hay Fecha Seleccionada
-    const fechaFiltro = document.getElementById('filtro-fecha-ficha').value;
-    let arrayARenderizar = fichasAgendadasCache;
-    
-    if (fechaFiltro) {
-        arrayARenderizar = fichasAgendadasCache.filter(f => f.fecha && f.fecha.substring(0,10) === fechaFiltro);
+    // Filtro por Fecha (o Día Actual por defecto)
+    let fechaFiltro = document.getElementById('filtro-fecha-ficha').value;
+    if (!fechaFiltro) {
+        // Fijar a la fecha de hoy por defecto si esta vacío
+        const hoy = new Date();
+        const y = hoy.getFullYear(); const m = String(hoy.getMonth()+1).padStart(2,'0'); const d = String(hoy.getDate()).padStart(2,'0');
+        fechaFiltro = `${y}-${m}-${d}`;
+        document.getElementById('filtro-fecha-ficha').value = fechaFiltro;
     }
     
-    if(!arrayARenderizar || arrayARenderizar.length === 0){
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:10px; color:#64748b;">No hay citas agendadas para este filtro.</td></tr>';
+    // Filtrar fichas que corresponden a la fecha elegida
+    const fichasHoy = fichasAgendadasCache.filter(f => f.fecha && f.fecha.substring(0,10) === fechaFiltro);
+    
+    if(fichasHoy.length === 0){
+        contenedor.innerHTML = '<div style="background:white; padding:20px; border-radius:8px; text-align:center; color:#64748b;">No hay citas agendadas para esta fecha.</div>';
         return;
     }
-    
-    arrayARenderizar.forEach(f => {
-       const badgeColor = f.estado === 'Pendiente' ? '#eab308' : (f.estado.includes('Reservado') ? '#3b82f6' : '#16a34a');
-       const shortDate = f.fecha ? f.fecha.substring(0,10) : 'Sin Fecha';
 
-       tbody.innerHTML += `
-         <tr style="border-bottom:1px solid #e2e8f0;">
-           <td style="padding:10px; font-weight:bold;">#${f.id_ficha}</td>
-           <td style="padding:10px;"><b>${shortDate}</b> <br><span style="color:#64748b; font-size:0.8rem;">${f.hora}</span></td>
-           <td style="padding:10px;">${f.paciente_nombre} ${f.paciente_apellido}<br><span style="color:#64748b; font-size:0.8rem;">CI: ${f.ci}</span></td>
-           <td style="padding:10px;">Dr(a). ${f.medico_nombre} ${f.medico_apellido}</td>
-           <td style="padding:10px;"><span style="background:${badgeColor}; color:white; padding:4px 8px; border-radius:12px; font-size:0.7rem; font-weight:bold;">${f.estado}</span></td>
-         </tr>
-       `;
+    // Agrupar fichas por Especialidad (buscando la especialidad del doctor en los datos globales)
+    const agrupado = {};
+    
+    fichasHoy.forEach(f => {
+        // Buscar médico para saber su especialidad principal
+        const docInfo = medicosGlobales.find(m => m.id_medico == f.id_medico);
+        let nombreEspecialidad = "General / Sin Asignar";
+        
+        if (docInfo && docInfo.especialidades && docInfo.especialidades.length > 0) {
+            // Tomamos la primera especialidad principal del doctor
+            const espObj = especialidadesGlobales.find(e => e.id_especialidad == docInfo.especialidades[0]);
+            if (espObj) nombreEspecialidad = espObj.nombre;
+        }
+        
+        if (!agrupado[nombreEspecialidad]) agrupado[nombreEspecialidad] = [];
+        agrupado[nombreEspecialidad].push(f);
+    });
+    
+    // Renderizado HTML
+    Object.keys(agrupado).forEach(especialidad => {
+        const fichasEsp = agrupado[especialidad];
+        
+        let htmlTabla = `
+            <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; overflow: hidden;">
+                <div style="background: var(--primary-color); color: white; padding: 10px 15px; font-weight: bold; font-size: 1.1rem; display:flex; justify-content: space-between;">
+                    ${especialidad}
+                    <span>${fichasEsp.length} cita(s)</span>
+                </div>
+                <table style="width:100%; border-collapse: collapse; text-align:left; font-size: 0.9rem;">
+                  <thead>
+                    <tr style="background:#f8fafc; border-bottom:1px solid #cbd5e1;">
+                      <th style="padding:10px;">Hora</th>
+                      <th style="padding:10px;">Paciente</th>
+                      <th style="padding:10px;">Doctor</th>
+                      <th style="padding:10px;">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+        `;
+        
+        // Ordenar por hora
+        fichasEsp.sort((a,b) => a.hora.localeCompare(b.hora)).forEach(f => {
+           const badgeColor = f.estado === 'Pendiente' ? '#eab308' : (f.estado.includes('Reserva') ? '#3b82f6' : '#16a34a');
+           htmlTabla += `
+             <tr style="border-bottom:1px solid #e2e8f0;">
+               <td style="padding:10px; font-weight:bold; color:#334155;">${f.hora.substring(0,5)}</td>
+               <td style="padding:10px;"><b>${f.paciente_nombre} ${f.paciente_apellido}</b><br><small style="color:#64748b;">CI: ${f.ci}</small></td>
+               <td style="padding:10px; color:#475569;">Dr. ${f.medico_nombre}</td>
+               <td style="padding:10px;"><span style="background:${badgeColor}; color:white; padding:4px 8px; border-radius:12px; font-size:0.7rem; font-weight:bold;">${f.estado}</span></td>
+             </tr>
+           `;
+        });
+        
+        htmlTabla += `</tbody></table></div>`;
+        contenedor.innerHTML += htmlTabla;
     });
 }
-document.getElementById('filtro-fecha-ficha').addEventListener('change', renderFichas);
+document.getElementById('filtro-fecha-ficha').addEventListener('change', renderFichasAgrupadas);
 
 
 /* Cargar Selectores Base */
@@ -272,23 +373,28 @@ async function cargarDatosIniciales() {
     const espReq = await fetch(API_URL + '/especialidades');
     especialidadesGlobales = await espReq.json();
     const selectEsp = document.getElementById('med_especialidades');
-    selectEsp.innerHTML = '';
-    especialidadesGlobales.forEach(e => selectEsp.innerHTML += '<option value="' + e.id_especialidad + '">' + e.nombre + '</option>');
+    if (selectEsp) {
+        selectEsp.innerHTML = '';
+        especialidadesGlobales.forEach(e => selectEsp.innerHTML += '<option value="' + e.id_especialidad + '">' + e.nombre + '</option>');
+    }
 
     const medReq = await fetch(API_URL + '/medicos');
     medicosGlobales = await medReq.json();
     let htmlMedicos = '<option value="">-- Selecciona un Médico --</option>';
     medicosGlobales.forEach(m => htmlMedicos += '<option value="' + m.id_medico + '">Dr. ' + m.nombre + ' ' + m.apellido + '</option>');
-    document.getElementById('seleccionar-medico').innerHTML = htmlMedicos;
-    document.getElementById('reg-horario-medico').innerHTML = htmlMedicos;
-    document.getElementById('reg-ausencia-medico').innerHTML = htmlMedicos;
+    
+    if(document.getElementById('seleccionar-medico')) document.getElementById('seleccionar-medico').innerHTML = htmlMedicos;
+    if(document.getElementById('reg-horario-medico')) document.getElementById('reg-horario-medico').innerHTML = htmlMedicos;
+    if(document.getElementById('reg-ausencia-medico')) document.getElementById('reg-ausencia-medico').innerHTML = htmlMedicos;
 
     const pacReq = await fetch(API_URL + '/pacientes');
     pacientesGlobales = await pacReq.json();
     const selectPac = document.getElementById('seleccionar-paciente');
-    selectPac.innerHTML = '<option value="">-- Selecciona un Paciente --</option>';
-    pacientesGlobales.forEach(p => selectPac.innerHTML += '<option value="' + p.id_paciente + '">' + p.nombre + ' ' + p.apellido + '</option>');
-  } catch(e) {}
+    if (selectPac) {
+        selectPac.innerHTML = '<option value="">-- Selecciona un Paciente --</option>';
+        pacientesGlobales.forEach(p => selectPac.innerHTML += '<option value="' + p.id_paciente + '">' + p.nombre + ' ' + p.apellido + '</option>');
+    }
+  } catch(e) { console.error("Error cargando selects:", e); }
 }
 cargarDatosIniciales();
 
@@ -308,7 +414,7 @@ document.getElementById('ausencia-form').addEventListener('submit', async (e) =>
     } catch(err) {} 
 });
 
-document.getElementById('horario-form').addEventListener('submit', async (e) => {
+document.getElementById('horario-form')?.addEventListener('submit', async (e) => {
   e.preventDefault(); statusMessage.className = 'message';
   
   const checkBoxes = document.querySelectorAll('input[name="dias_chk"]:checked');
@@ -331,7 +437,7 @@ document.getElementById('horario-form').addEventListener('submit', async (e) => 
   } catch(e) {}
 });
 
-document.getElementById('especialidad-form').addEventListener('submit', async (e) => {
+document.getElementById('especialidad-form')?.addEventListener('submit', async (e) => {
   e.preventDefault(); statusMessage.className = 'message';
   try {
     const res = await fetch(API_URL + '/especialidades/crear', {
@@ -342,10 +448,10 @@ document.getElementById('especialidad-form').addEventListener('submit', async (e
   } catch(err) {}
 });
 
-document.getElementById('medico-form').addEventListener('submit', async (e) => {
+document.getElementById('medico-form')?.addEventListener('submit', async (e) => {
   e.preventDefault(); statusMessage.className = 'message';
   const sel = document.getElementById('med_especialidades');
-  const arr = Array.from(sel.selectedOptions).map(opt => parseInt(opt.value));
+  const arr = Array.from(sel?.selectedOptions || []).map(opt => parseInt(opt.value));
   const data = { nombre: document.getElementById('med_nombre').value, apellido: document.getElementById('med_apellido').value, telefono: document.getElementById('med_telefono').value, especialidades: arr };
   try {
     const res = await fetch(API_URL + '/medicos/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
@@ -353,13 +459,233 @@ document.getElementById('medico-form').addEventListener('submit', async (e) => {
   } catch(e) {}
 });
 
-document.getElementById('paciente-form').addEventListener('submit', async (e) => {
+document.getElementById('paciente-form')?.addEventListener('submit', async (e) => {
   e.preventDefault(); statusMessage.className = 'message';
-  const data = { nombre: document.getElementById('nombre').value, apellido: document.getElementById('apellido').value, ci: document.getElementById('ci').value, telefono: document.getElementById('telefono').value, correo: document.getElementById('correo').value, id_cobertura: parseInt(document.getElementById('id_cobertura').value) };
+  const data = { 
+      nombre: document.getElementById('nombre').value, 
+      apellido: document.getElementById('apellido').value, 
+      ci: document.getElementById('ci').value, 
+      fecha_nacimiento: document.getElementById('fecha_nac').value,
+      telefono: document.getElementById('telefono').value, 
+      correo: document.getElementById('correo').value, 
+      id_cobertura: parseInt(document.getElementById('id_cobertura').value) 
+  };
   try {
     const res = await fetch(API_URL + '/pacientes/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if(res.ok) { statusMessage.textContent = '✅ Paciente creado.'; statusMessage.className = 'message success'; e.target.reset(); cargarDatosIniciales(); }
   } catch(e) {}
+});
+
+if (!isSecretaria) {
+    document.getElementById('usuario-form').addEventListener('submit', async (e) => {
+        e.preventDefault(); statusMessage.className = 'message';
+        const data = {
+            usuario: document.getElementById('usr_nombre').value,
+            contraseña: document.getElementById('usr_pass').value,
+            id_rol: parseInt(document.getElementById('usr_rol').value)
+        };
+        try {
+            const res = await fetch(API_URL + '/auth/registrar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+            if (res.ok) {
+                statusMessage.textContent = '🔑 Usuario Creado correctamente (Podrá Iniciar Sesión de inmediato).';
+                statusMessage.className = 'message success'; e.target.reset();
+            } else {
+                statusMessage.textContent = '❌ Error al crear usuario.';
+                statusMessage.className = 'message error';
+            }
+        }catch(e){}
+    });
+}
+
+/* ========================================================
+   LOGICA AGENDAR MANUAL: GENERACIÓN DE BOTONES
+======================================================== */
+document.getElementById('seleccionar-medico')?.addEventListener('change', async (e) => {
+    const mdId = parseInt(e.target.value);
+    const diasContainer = document.getElementById('manual-dias-container');
+    const diasStep = document.getElementById('manual-dias-step');
+    const slotsContainer = document.getElementById('manual-slots-container');
+    const slotsStep = document.getElementById('manual-slots-step');
+    const btnSubmit = document.getElementById('btn-submit-manual');
+    const txtSelected = document.getElementById('manual-slot-selected-text');
+    
+    document.getElementById('fecha_ficha').value = '';
+    document.getElementById('hora_ficha').value = '';
+    btnSubmit.disabled = true;
+    txtSelected.style.display = 'none';
+    txtSelected.textContent = '';
+    slotsStep.style.display = 'none';
+    
+    if (!mdId) {
+        diasStep.style.display = 'none';
+        return;
+    }
+    
+    diasStep.style.display = 'block';
+    diasContainer.innerHTML = '<p style="color:#64748b;">Calculando disponibilidad...</p>';
+    
+    try {
+        const [horariosRes, ausenciasRes, fichasRes] = await Promise.all([
+            fetch(API_URL + '/horarios').then(r => r.json()),
+            fetch(API_URL + '/ausencias').then(r => r.json()),
+            fetch(API_URL + '/fichas').then(r => r.json())
+        ]);
+        
+        const horariosDr = horariosRes.filter(h => h.id_medico === mdId);
+        const ausenciasDr = ausenciasRes.filter(a => a.id_medico === mdId);
+        const fichasDr = fichasRes.filter(f => f.id_medico === mdId && (f.estado === 'Pendiente' || f.estado === 'Agendada en Local' || f.estado.includes('Reserva')));
+        
+        if (horariosDr.length === 0) {
+            diasContainer.innerHTML = '<p style="color:#ef4444;">Este médico no tiene horarios configurados.</p>';
+            return;
+        }
+        
+        const nomDias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const nomMeses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        
+        let diasAgrupados = [];
+        
+        for (let i = 0; i < 7; i++) {
+            const tempDate = new Date(hoy);
+            tempDate.setDate(hoy.getDate() + i);
+            const wDay = tempDate.getDay();
+            
+            const nomDia = nomDias[wDay];
+            const horarioDia = horariosDr.find(h => h.dia_semana === nomDia);
+            
+            if (horarioDia) {
+                let mesPad = (tempDate.getMonth() + 1).toString().padStart(2, '0');
+                let diaPad = tempDate.getDate().toString().padStart(2, '0');
+                const tempStr = `${tempDate.getFullYear()}-${mesPad}-${diaPad}`;
+                const esAusente = ausenciasDr.some(a => a.fecha_ausencia.startsWith(tempStr));
+                
+                if (!esAusente) {
+                    const [hIni, mIni] = horarioDia.hora_inicio.split(':').map(Number);
+                    const [hFin, mFin] = horarioDia.hora_fin.split(':').map(Number);
+                    
+                    let slotTime = new Date(tempDate);
+                    slotTime.setHours(hIni, mIni, 0, 0);
+                    const endTime = new Date(tempDate);
+                    endTime.setHours(hFin, mFin, 0, 0);
+                    
+                    let slotsDeEsteDia = [];
+                    
+                    while (slotTime < endTime) {
+                        const hStr = slotTime.getHours().toString().padStart(2, '0');
+                        const minStr = slotTime.getMinutes().toString().padStart(2, '0');
+                        const horaAct = `${hStr}:${minStr}`;
+                        
+                        const realNow = new Date();
+                        if (i === 0 && slotTime <= realNow) {
+                            slotTime.setMinutes(slotTime.getMinutes() + 15);
+                            continue;
+                        }
+
+                        const fichasEsteTurno = fichasDr.filter(f => f.fecha.startsWith(tempStr) && f.id_horario == horarioDia.id_horario);
+                        const numOcupadas = fichasEsteTurno.length;
+                        const yaOcupadoExacto = fichasEsteTurno.some(f => f.hora.startsWith(horaAct));
+                        
+                        if (!yaOcupadoExacto && numOcupadas < horarioDia.limite_fichas) {
+                            slotsDeEsteDia.push({
+                                fechaFront: `${tempDate.getDate()}/${nomMeses[tempDate.getMonth()]}`,
+                                hora: horaAct
+                            });
+                        }
+                        slotTime.setMinutes(slotTime.getMinutes() + 15);
+                    }
+                    
+                    if (slotsDeEsteDia.length > 0) {
+                        diasAgrupados.push({
+                            nomDia: nomDia,
+                            horaTxt: `${horarioDia.hora_inicio.substring(0,5)} - ${horarioDia.hora_fin.substring(0,5)}`,
+                            fechaIso: tempStr,
+                            fechaFrontStr: `${tempDate.getDate()} de ${nomMeses[tempDate.getMonth()]}`,
+                            slots: slotsDeEsteDia
+                        });
+                    }
+                }
+            }
+        }
+        
+        diasContainer.innerHTML = '';
+        if (diasAgrupados.length === 0) {
+            diasContainer.innerHTML = '<p style="color:#d97706;">⚠️ No hay disponibilidad los próximos 7 días.</p>';
+            return;
+        }
+        
+        diasAgrupados.forEach(diaData => {
+            const btnDia = document.createElement('button');
+            btnDia.type = 'button';
+            btnDia.style.cssText = "background: white; border: 1px solid #10b981; color: var(--primary-color); padding: 15px; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s;";
+            btnDia.innerHTML = `<span style="font-weight:bold; font-size:1.1rem; display:block; color:#0f172a;">${diaData.nomDia}</span><span style="font-size:0.9rem; font-weight:600; color:#10b981;">${diaData.fechaFrontStr}</span><br><small style="color:#64748b; font-size:0.8rem;">${diaData.horaTxt}</small>`;
+            
+            btnDia.onmouseover = () => { if(btnDia.className !== 'active-dia') { btnDia.style.background = '#ecfdf5'; } };
+            btnDia.onmouseout = () => { if(btnDia.className !== 'active-dia') { btnDia.style.background = 'white'; } };
+            
+            btnDia.onclick = () => {
+                const previos = diasContainer.querySelectorAll('button');
+                previos.forEach(b => {
+                    b.style.background = 'white';
+                    b.style.border = '1px solid #10b981';
+                    b.className = '';
+                });
+                
+                btnDia.style.background = '#10b981';
+                btnDia.style.color = 'white';
+                btnDia.style.border = '1px solid #10b981';
+                btnDia.innerHTML = `<span style="font-weight:bold; font-size:1.1rem; display:block; color:white;">${diaData.nomDia}</span><span style="font-size:0.9rem; font-weight:600; color:white;">${diaData.fechaFrontStr}</span><br><small style="color:white; font-size:0.8rem;">${diaData.horaTxt}</small>`;
+                btnDia.className = 'active-dia';
+                
+                // Limpiar step 2
+                document.getElementById('fecha_ficha').value = '';
+                document.getElementById('hora_ficha').value = '';
+                btnSubmit.disabled = true;
+                txtSelected.style.display = 'none';
+                
+                // Mostrar slots de este dia
+                slotsStep.style.display = 'block';
+                slotsContainer.innerHTML = '';
+                
+                diaData.slots.forEach(slot => {
+                    const btnSlot = document.createElement('button');
+                    btnSlot.type = 'button';
+                    btnSlot.style.cssText = "background: white; border: 1px solid var(--primary-color); color: var(--primary-color); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; font-size: 0.95rem;";
+                    btnSlot.textContent = slot.hora;
+                    
+                    btnSlot.onmouseover = () => { if(btnSlot.className !== 'active-slot') { btnSlot.style.background = '#ecfdf5'; } };
+                    btnSlot.onmouseout = () => { if(btnSlot.className !== 'active-slot') { btnSlot.style.background = 'white'; } };
+                    
+                    btnSlot.onclick = () => {
+                        slotsContainer.querySelectorAll('button').forEach(b => {
+                            b.style.background = 'white';
+                            b.style.color = 'var(--primary-color)';
+                            b.className = '';
+                        });
+                        
+                        btnSlot.style.background = 'var(--primary-color)';
+                        btnSlot.style.color = 'white';
+                        btnSlot.className = 'active-slot';
+                        
+                        document.getElementById('fecha_ficha').value = diaData.fechaIso;
+                        document.getElementById('hora_ficha').value = slot.hora;
+                        btnSubmit.disabled = false;
+                        
+                        txtSelected.style.display = 'block';
+                        txtSelected.innerHTML = `✅ Cita seleccionada: ${diaData.nomDia} ${diaData.fechaFrontStr} a las ${slot.hora}`;
+                    };
+                    slotsContainer.appendChild(btnSlot);
+                });
+            };
+            diasContainer.appendChild(btnDia);
+        });
+
+    } catch (e) {
+        console.error(e);
+        diasContainer.innerHTML = '<p style="color:#ef4444;">Error cargando disponibilidad.</p>';
+    }
 });
 
 document.getElementById('ficha-form').addEventListener('submit', async (e) => {
