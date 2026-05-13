@@ -45,6 +45,38 @@ tabsHtml += `
   <div style="margin-top: auto;">
     <button id="btn-logout" style="width:100%; border:none; background:#fee2e2; color:#991b1b; padding:10px; border-radius:8px; font-weight:bold; cursor:pointer;">Cerrar Sesión</button>
   </div>
+  
+  <!-- MODAL MASIVO DE EDICIÓN PARA HORARIOS -->
+  <div id="modal-horario-masivo" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+     <div style="background:white; padding:2rem; border-radius:12px; max-width:600px; width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+         <h2 style="color:var(--primary-color); margin-top:0;">📝 Modificar Turnos de Médico</h2>
+         <p id="edit-horario-doc-name" style="font-weight:bold; color:#334155; margin-bottom:1.5rem;"></p>
+         <form id="form-horario-masivo">
+             <input type="hidden" id="edit-horario-medico-id">
+             <div class="form-group" style="background:#f1f5f9; padding:15px; border-radius:8px; border:1px solid #cbd5e1;">
+                <label style="font-weight:bold; display:block; margin-bottom:10px;">Días de Atención:</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px;">
+                  <label><input type="checkbox" name="edit_dias_chk" value="Lunes"> Lunes</label>
+                  <label><input type="checkbox" name="edit_dias_chk" value="Martes"> Martes</label>
+                  <label><input type="checkbox" name="edit_dias_chk" value="Miércoles"> Miércoles</label>
+                  <label><input type="checkbox" name="edit_dias_chk" value="Jueves"> Jueves</label>
+                  <label><input type="checkbox" name="edit_dias_chk" value="Viernes"> Viernes</label>
+                  <label><input type="checkbox" name="edit_dias_chk" value="Sábado"> Sábado</label>
+                  <label><input type="checkbox" name="edit_dias_chk" value="Domingo"> Domingo</label>
+                </div>
+             </div>
+             <div class="row" style="margin-top:1rem;">
+                <div class="form-group"><label>Hora Ingreso</label><input type="time" id="edit_hora_inicio" required></div>
+                <div class="form-group"><label>Hora Salida</label><input type="time" id="edit_hora_fin" required></div>
+                <div class="form-group"><label>Cupos/Día</label><input type="number" id="edit_limite_fichas" required min="1"></div>
+             </div>
+             <div style="display:flex; gap:10px; margin-top:20px;">
+                 <button type="button" style="flex:1; padding:12px; border:none; background:#e2e8f0; border-radius:8px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('modal-horario-masivo').style.display='none'">Cancelar</button>
+                 <button type="submit" class="action-btn" style="flex:2; margin-top:0;">Actualizar Calendario Médico</button>
+             </div>
+         </form>
+     </div>
+  </div>
 `;
 
 document.querySelector('#app').innerHTML = `
@@ -162,28 +194,37 @@ document.querySelector('#app').innerHTML = `
         </div>
 
         <div id="vista-horario" style="display: none;">
-          <h1>Crear Calendario Semanal</h1>
-          <form id="horario-form">
-            <div class="form-group"><label>Médico Tratante</label><select id="reg-horario-medico" required></select></div>
-            <div class="form-group" style="background:#f8fafc; padding:10px; border-radius:5px; border:1px solid #e2e8f0;">
-              <label style="margin-bottom:5px; color:#1e293b;">Días de Trabajo (Selecciona múltiples):</label>
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; font-size: 0.9rem;">
-                <label><input type="checkbox" name="dias_chk" value="Lunes"> Lunes</label>
-                <label><input type="checkbox" name="dias_chk" value="Martes"> Martes</label>
-                <label><input type="checkbox" name="dias_chk" value="Miércoles"> Miércoles</label>
-                <label><input type="checkbox" name="dias_chk" value="Jueves"> Jueves</label>
-                <label><input type="checkbox" name="dias_chk" value="Viernes"> Viernes</label>
-                <label><input type="checkbox" name="dias_chk" value="Sábado"> Sábado</label>
-                <label><input type="checkbox" name="dias_chk" value="Domingo"> Domingo</label>
+          <h1>Calendario Semanal de Médicos</h1>
+          <p class="subtitle">Configura y gestiona los horarios de atención de forma agrupada.</p>
+          
+          <div style="background:#f8fafc; padding:1.5rem; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:2rem;">
+            <h3 style="margin-top:0; color:var(--primary-color);">➕ Registrar Nuevo Horario</h3>
+            <form id="horario-form">
+              <div class="form-group"><label>Médico Tratante</label><select id="reg-horario-medico" required></select></div>
+              <div class="form-group" style="background:white; padding:12px; border-radius:8px; border:1px solid #cbd5e1;">
+                <label style="margin-bottom:8px; display:block; font-weight:700;">Días de Trabajo:</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">
+                  <label><input type="checkbox" name="dias_chk" value="Lunes"> Lunes</label>
+                  <label><input type="checkbox" name="dias_chk" value="Martes"> Martes</label>
+                  <label><input type="checkbox" name="dias_chk" value="Miércoles"> Miércoles</label>
+                  <label><input type="checkbox" name="dias_chk" value="Jueves"> Jueves</label>
+                  <label><input type="checkbox" name="dias_chk" value="Viernes"> Viernes</label>
+                  <label><input type="checkbox" name="dias_chk" value="Sábado"> Sábado</label>
+                  <label><input type="checkbox" name="dias_chk" value="Domingo"> Domingo</label>
+                </div>
               </div>
-            </div>
-            <div class="row">
-              <div class="form-group"><label>Hora de Ingreso</label><input type="time" id="hora_inicio" required></div>
-              <div class="form-group"><label>Hora de Salida</label><input type="time" id="hora_fin" required></div>
-            </div>
-            <div class="form-group"><label>Cupos Máximos por Día</label><input type="number" id="limite_fichas" required min="1" value="10"></div>
-            <button type="submit" class="action-btn" id="btn-horario">Inscribir Todo el Horario</button>
-          </form>
+              <div class="row">
+                <div class="form-group"><label>Hora Ingreso</label><input type="time" id="hora_inicio" required></div>
+                <div class="form-group"><label>Hora Salida</label><input type="time" id="hora_fin" required></div>
+                <div class="form-group"><label>Cupos/Día</label><input type="number" id="limite_fichas" required min="1" value="10"></div>
+              </div>
+              <button type="submit" class="action-btn" id="btn-horario" style="margin-top:0.5rem;">Guardar Horario Múltiple</button>
+            </form>
+          </div>
+
+          <div id="lista-horarios-agrupados">
+            <p style="text-align:center; color:#64748b; padding:2rem;">Cargando horarios agrupados...</p>
+          </div>
         </div>
 
         <div id="vista-gestion" style="display: none;">
@@ -270,6 +311,7 @@ function activateTab(key) {
   tabs[key].btn.classList.add('active'); tabs[key].vista.style.display = 'block'; statusMessage.className = 'message';
   
   if (key === 'lista') renderFichasAgrupadas();
+  if (key === 'horario' && !isSecretaria) renderHorariosAgrupados();
   if (key === 'gestion' && !isSecretaria) cargarDatosGestion();
 }
 Object.keys(tabs).forEach(key => { tabs[key].btn.addEventListener('click', () => activateTab(key)); });
@@ -580,7 +622,7 @@ document.getElementById('seleccionar-medico')?.addEventListener('change', async 
                         
                         const realNow = new Date();
                         if (i === 0 && slotTime <= realNow) {
-                            slotTime.setMinutes(slotTime.getMinutes() + 15);
+                            slotTime.setMinutes(slotTime.getMinutes() + 30);
                             continue;
                         }
 
@@ -594,7 +636,7 @@ document.getElementById('seleccionar-medico')?.addEventListener('change', async 
                                 hora: horaAct
                             });
                         }
-                        slotTime.setMinutes(slotTime.getMinutes() + 15);
+                        slotTime.setMinutes(slotTime.getMinutes() + 30);
                     }
                     
                     if (slotsDeEsteDia.length > 0) {
@@ -771,37 +813,12 @@ function renderTablaGestion() {
     // Cuerpo
     let bodyHtml = '';
 
-    // Renderizado especial para Horario
+    // Renderizado especial para Horario (AGRUPADO)
     if (tableName === 'horario') {
-        if (tableData.data.length === 0) {
-            bodyHtml = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No hay horarios registrados.</td></tr>`;
-        } else {
-            tableData.data.forEach(row => {
-                const docInfo = medicosGlobales.find(m => m.id_medico == row.id_medico);
-                const doctorLabel = docInfo ? `Dr. ${docInfo.nombre} ${docInfo.apellido}` : `<i style="color:#94a3b8">ID ${row.id_medico}</i>`;
-                const diaColors = { Lunes:'#dbeafe', Martes:'#dcfce7', Miércoles:'#fef9c3', Jueves:'#ffedd5', Viernes:'#ede9fe', Sábado:'#fce7f3', Domingo:'#fee2e2' };
-                const diaBg = diaColors[row.dia_semana] || '#f1f5f9';
-                bodyHtml += `
-                <tr style="border-bottom:1px solid #e2e8f0;">
-                    <td style="padding:8px; font-weight:bold; color:#64748b;">#${row.id_horario}</td>
-                    <td style="padding:8px; font-weight:600; color:#0f172a;">${doctorLabel}</td>
-                    <td style="padding:8px;">
-                        <span style="background:${diaBg}; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600;">${row.dia_semana}</span>
-                    </td>
-                    <td style="padding:8px; color:#475569;">${row.hora_inicio}</td>
-                    <td style="padding:8px; color:#475569;">${row.hora_fin}</td>
-                    <td style="padding:8px; text-align:center;"><span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:8px; font-weight:bold;">${row.limite_fichas}</span></td>
-                    <td style="padding:8px; display:flex; gap:5px;">
-                        <button class="btn-edit-gestion" style="background:#3b82f6; color:white; border:none; padding:6px 12px; cursor:pointer; border-radius:4px; font-size:12px;" data-table="horario" data-pk="id_horario" data-id="${row.id_horario}">✏️ Editar</button>
-                        <button class="btn-delete-gestion" style="background:#ef4444; color:white; border:none; padding:6px 12px; cursor:pointer; border-radius:4px; font-size:12px;" data-table="horario" data-pk="id_horario" data-id="${row.id_horario}">🗑️ Borrar</button>
-                    </td>
-                </tr>`;
-            });
-        }
-        tbody.innerHTML = bodyHtml;
-        document.querySelectorAll('.btn-delete-gestion').forEach(btn => btn.addEventListener('click', handleDeleteGestion));
-        document.querySelectorAll('.btn-edit-gestion').forEach(btn => btn.addEventListener('click', handleEditGestion));
-        return; // Salir, no continuar con el render genérico
+        thead.innerHTML = ''; // Limpiar cabecera para el modo agrupado
+        tbody.innerHTML = '<tr><td style="padding:0;"><div id="gestion-horarios-container" style="padding:1rem;"></div></td></tr>';
+        renderHorariosAgrupados('gestion-horarios-container');
+        return;
     }
     
     let colspanVal = tableData.columns.length + 1;
@@ -1080,5 +1097,145 @@ document.getElementById('gestion-modal-form').addEventListener('submit', async (
     } catch(err) { 
         console.error("Error en la petición:", err);
         alert('❌ Error de comunicación con el servidor. ¿Reiniciaste Node.js? Detalles: ' + err.message);
+    }
+});
+
+/* ========================================================
+   LOGICA: HORARIOS AGRUPADOS (ESPECIALIDAD > DOCTOR)
+======================================================== */
+async function renderHorariosAgrupados(containerId = 'lista-horarios-agrupados') {
+    const contenedor = document.getElementById(containerId);
+    if (!contenedor) return;
+
+    try {
+        const res = await fetch(API_URL + '/horarios');
+        const todosHorarios = await res.json();
+        
+        contenedor.innerHTML = '<h2 style="margin-top:2rem; border-bottom:2px solid #e2e8f0; padding-bottom:0.5rem; color:#334155;">📋 Listado de Turnos Vigentes</h2>';
+
+        if (especialidadesGlobales.length === 0) {
+            contenedor.innerHTML += '<p style="text-align:center; color:#64748b; padding:2rem;">No hay especialidades registradas.</p>';
+            return;
+        }
+
+        especialidadesGlobales.forEach(esp => {
+            // Médicos que pertenecen a esta especialidad
+            const medicosDeEsp = medicosGlobales.filter(m => m.especialidades && m.especialidades.includes(esp.id_especialidad));
+            
+            if (medicosDeEsp.length > 0) {
+                let espHtml = `
+                    <div style="margin-bottom:2rem; background:white; border-radius:12px; border:1px solid #cbd5e1; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,0.02);">
+                        <div style="background:#f1f5f9; padding:12px 20px; font-weight:800; color:purple; font-size:1.1rem; border-bottom:1px solid #cbd5e1; display:flex; align-items:center; gap:10px;">
+                            ⚕️ Especialidad: ${esp.nombre}
+                        </div>
+                        <div style="padding:15px; display:flex; flex-direction:column; gap:15px;">
+                `;
+
+                medicosDeEsp.forEach(med => {
+                    const horariosMed = todosHorarios.filter(h => h.id_medico === med.id_medico);
+                    const diasOcupados = horariosMed.map(h => h.dia_semana);
+                    const hoursRange = horariosMed.length > 0 ? `${horariosMed[0].hora_inicio.substring(0,5)} - ${horariosMed[0].hora_fin.substring(0,5)}` : '--:--';
+                    const cupos = horariosMed.length > 0 ? horariosMed[0].limite_fichas : '0';
+
+                    espHtml += `
+                        <div style="border:1px solid #e2e8f0; border-radius:10px; padding:15px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:rgba(248,250,252,0.5);">
+                            <div>
+                                <h4 style="margin:0; font-size:1rem; color:#0f172a;">Dr(a). ${med.nombre} ${med.apellido}</h4>
+                                <div style="margin-top:8px; display:flex; gap:5px; flex-wrap:wrap;">
+                                    ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => {
+                                        const esta = diasOcupados.includes(d);
+                                        return `<span style="font-size:0.7rem; padding:3px 8px; border-radius:12px; font-weight:700; ${esta ? 'background:#10b981; color:white;' : 'background:#e2e8f0; color:#94a3b8;'}">${d.substring(0,2)}</span>`;
+                                    }).join('')}
+                                </div>
+                                <p style="margin:8px 0 0; font-size:0.85rem; color:#64748b;">
+                                    ⏰ Horario: <b>${hoursRange}</b> &nbsp;|&nbsp; 👥 Cupos: <b>${cupos}</b>
+                                </p>
+                            </div>
+                            <button class="btn-bulk-edit" data-id="${med.id_medico}" data-name="${med.nombre} ${med.apellido}" style="background:var(--primary-color); color:white; border:none; padding:8px 16px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:0.85rem;">✏️ Modificar Turnos</button>
+                        </div>
+                    `;
+                });
+
+                espHtml += `</div></div>`;
+                contenedor.innerHTML += espHtml;
+            }
+        });
+
+        document.querySelectorAll('.btn-bulk-edit').forEach(btn => {
+            btn.onclick = () => abrirModalMasivoHorario(btn.dataset.id, btn.dataset.name);
+        });
+
+    } catch (e) {
+        console.error("Error al cargar horarios agrupados", e);
+        contenedor.innerHTML = '<p style="color:red; text-align:center;">Error al conectar con la base de datos de horarios.</p>';
+    }
+}
+
+async function abrirModalMasivoHorario(id_medico, nombre) {
+    document.getElementById('edit-horario-doc-name').textContent = `Doctor: ${nombre}`;
+    document.getElementById('edit-horario-medico-id').value = id_medico;
+    
+    // Reset checks
+    document.querySelectorAll('input[name="edit_dias_chk"]').forEach(chk => chk.checked = false);
+    
+    try {
+        const res = await fetch(API_URL + '/horarios');
+        const todos = await res.json();
+        const mHorarios = todos.filter(h => h.id_medico == id_medico);
+        
+        if (mHorarios.length > 0) {
+            mHorarios.forEach(h => {
+                const chk = document.querySelector(`input[name="edit_dias_chk"][value="${h.dia_semana}"]`);
+                if (chk) chk.checked = true;
+            });
+            document.getElementById('edit_hora_inicio').value = mHorarios[0].hora_inicio.substring(0,5);
+            document.getElementById('edit_hora_fin').value = mHorarios[0].hora_fin.substring(0,5);
+            document.getElementById('edit_limite_fichas').value = mHorarios[0].limite_fichas;
+        } else {
+            document.getElementById('edit_hora_inicio').value = "08:00";
+            document.getElementById('edit_hora_fin').value = "12:00";
+            document.getElementById('edit_limite_fichas').value = 10;
+        }
+        
+        document.getElementById('modal-horario-masivo').style.display = 'flex';
+    } catch(e) {}
+}
+
+document.getElementById('form-horario-masivo')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id_medico = document.getElementById('edit-horario-medico-id').value;
+    const dias = Array.from(document.querySelectorAll('input[name="edit_dias_chk"]:checked')).map(c => c.value);
+    
+    if (dias.length === 0) {
+        alert("Debes seleccionar al menos un día."); return;
+    }
+    
+    const data = {
+        dias_semana: dias,
+        hora_inicio: document.getElementById('edit_hora_inicio').value,
+        hora_fin: document.getElementById('edit_hora_fin').value,
+        limite_fichas: parseInt(document.getElementById('edit_limite_fichas').value)
+    };
+    
+    try {
+        const res = await fetch(`${API_URL}/horarios/actualizar-medico/${id_medico}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+            statusMessage.textContent = '✅ Horario de médico actualizado correctamente.';
+            statusMessage.className = 'message success';
+            document.getElementById('modal-horario-masivo').style.display = 'none';
+            renderHorariosAgrupados();
+            if (gestionSelect.value === 'horario') renderHorariosAgrupados('gestion-horarios-container');
+            cargarFichasDesdeBackend(); // Refrescar si hubo cambios que afecten visualmente
+        } else {
+            alert("Error al actualizar el horario.");
+        }
+    } catch(e) {
+        console.error(e);
+        alert("Error de conexión.");
     }
 });

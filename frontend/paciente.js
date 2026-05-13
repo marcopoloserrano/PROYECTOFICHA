@@ -83,7 +83,7 @@ document.querySelector('#patient-app').innerHTML = `
                 <input type="hidden" id="fecha" value="">
             </div>
 
-            <label style="color:#065f46; font-size:0.9rem; font-weight:700; display:block; margin-bottom:10px;">Selecciona tu hora de atención (Segmentos de 15 min):</label>
+            <label style="color:#065f46; font-size:0.9rem; font-weight:700; display:block; margin-bottom:10px;">Selecciona tu hora de atención (Segmentos de 30 min):</label>
             <div id="slots-grid-container" class="slots-grid">
                 <!-- Botones de 15 minutos aquí -->
             </div>
@@ -110,7 +110,7 @@ document.querySelector('#patient-app').innerHTML = `
         <div class="ticket-row"><span>Fecha:</span> <span id="res-fecha">-</span></div>
         <div class="ticket-row"><span>Hora:</span> <span id="res-hora">-</span></div>
         <div style="text-align: center; margin-top: 15px; border-top: 1px dashed #a7f3d0; padding-top: 10px;">
-           <span style="font-size: 0.75rem; color: #065f46;">Por favor, llega 15 minutos antes de tu cita.</span>
+           <span style="font-size: 0.75rem; color: #065f46;">Por favor, llega 30 minutos antes de tu cita.</span>
         </div>
       </div>
       <div class="ticket-footer">
@@ -312,7 +312,7 @@ function generarIntervalos(inicioStr, finStr) {
     const fin = new Date(`2000-01-01T${finStr}`);
     while(curr < fin) {
         intervalos.push(curr.toTimeString().substring(0, 5));
-        curr.setMinutes(curr.getMinutes() + 15);
+        curr.setMinutes(curr.getMinutes() + 30);
     }
     return intervalos;
 }

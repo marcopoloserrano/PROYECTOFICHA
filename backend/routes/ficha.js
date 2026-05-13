@@ -87,6 +87,22 @@ router.post('/crear', async (req, res) => {
       INSERT INTO Ficha (id_paciente, id_medico, id_horario, fecha, hora, estado) 
       VALUES (?, ?, ?, ?, ?, ?)
     `;
+    // NUEVO: Verificación de "Un solo turno por SEMANA por paciente"
+    const [existente] = await db.query(
+      `SELECT id_ficha FROM Ficha 
+       WHERE id_paciente = ? 
+       AND YEARWEEK(fecha, 1) = YEARWEEK(?, 1)
+       AND estado != "Cancelado"`,
+      [id_paciente, fecha]
+    );
+
+    if (existente.length > 0) {
+      return res.status(400).json({ 
+        message: 'Ya tienes una cita agendada para esta semana. Solo se permite una cita por semana.',
+        isValidationError: true 
+      });
+    }
+
     const valores = [id_paciente, id_medico, id_horario || null, fecha, hora, estado || 'Pendiente'];
 
     const [resultado] = await db.query(sqlQuery, valores);

@@ -87,5 +87,55 @@ router.put('/actualizar/:id', async (req, res) => {
   }
 });
 
+// PUT /horarios/actualizar-medico/:id_medico - Actualización masiva de horario de un médico
+router.put('/actualizar-medico/:id_medico', async (req, res) => {
+  const { id_medico } = req.params;
+  const { dias_semana, hora_inicio, hora_fin, limite_fichas } = req.body;
+
+  if (!id_medico || !dias_semana || !Array.isArray(dias_semana) || dias_semana.length === 0 || !hora_inicio || !hora_fin || !limite_fichas) {
+    return res.status(400).json({ message: 'Faltan datos obligatorios para la actualización masiva.' });
+  }
+
+  const connection = await db.getConnection();
+  await connection.beginTransaction();
+
+  try {
+    // 1. Eliminar horarios actuales del médico
+    await connection.query('DELETE FROM Horario WHERE id_medico = ?', [id_medico]);
+
+    // 2. Insertar los nuevos horarios
+    const fecha_inicio = '2020-01-01';
+    const fecha_fin = '2099-12-31';
+
+    const sqlInsert = `
+      INSERT INTO Horario (id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas) 
+      VALUES ?
+    `;
+
+    const valoresAInsertar = dias_semana.map(dia => [
+        id_medico, 
+        dia, 
+        hora_inicio, 
+        hora_fin, 
+        fecha_inicio, 
+        fecha_fin, 
+        limite_fichas
+    ]);
+
+    await connection.query(sqlInsert, [valoresAInsertar]);
+    await connection.commit();
+
+    res.json({
+      success: true,
+      message: `¡Horario de médico actualizado exitosamente para ${dias_semana.length} días!`
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ message: 'Error al actualizar el horario masivamente.', error: error.message });
+  } finally {
+    connection.release();
+  }
+});
+
 module.exports = router;
 
