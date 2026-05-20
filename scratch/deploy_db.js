@@ -18,7 +18,7 @@ const config = {
   host: 'mysql-24ac1a4b-marco-8bff.a.aivencloud.com',
   port: 12407, // Ejemplo: 12407 (sin comillas)
   user: 'avnadmin',
-  password: 'AVNS_hlspJOUOuPdnO4JV2dD',
+  password: '',
   database: 'defaultdb', // Aiven suele llamar a la BD inicial defaultdb
   ssl: {
     rejectUnauthorized: false
@@ -52,12 +52,12 @@ async function migrate() {
       if (!trimmedLine || (trimmedLine.startsWith('--') && !trimmedLine.includes('END'))) continue;
 
       currentStatement += line + '\n';
-      
+
       const upperLine = trimmedLine.toUpperCase();
-      
+
       // Manejo más preciso de bloques
       if (upperLine.includes('BEGIN')) inBlock++;
-      
+
       // Solo decrementar si es un END solo, no un END IF o END LOOP
       if (upperLine.startsWith('END') && !upperLine.includes('IF') && !upperLine.includes('LOOP') && !upperLine.includes('WHILE')) {
         inBlock--;
