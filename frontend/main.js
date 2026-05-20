@@ -292,6 +292,10 @@ document.querySelector('#app').innerHTML = `
     </div>
   </div>
   
+  // CAPTURAR ELEMENTOS DESPUÉS DE INYECTAR EL HTML
+  const gestionSelect = document.getElementById('gestion-tabla-select');
+  const filtroFechaFicha = document.getElementById('filtro-fecha-ficha');
+
   ${!isSecretaria ? `
   <!-- MODAL DE EDICIÓN PARA VISTA GESTIÓN -->
   <div id="gestion-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
@@ -432,7 +436,7 @@ function renderFichasAgrupadas() {
         contenedor.innerHTML += htmlTabla;
     });
 }
-document.getElementById('filtro-fecha-ficha').addEventListener('change', renderFichasAgrupadas);
+if(filtroFechaFicha) filtroFechaFicha.addEventListener('change', renderFichasAgrupadas);
 
 
 /* Cargar Selectores Base */
@@ -990,7 +994,7 @@ function renderTablaGestion() {
     document.querySelectorAll('.btn-edit-gestion').forEach(btn => btn.addEventListener('click', handleEditGestion));
 }
 
-gestionSelect.addEventListener('change', renderTablaGestion);
+if(gestionSelect) gestionSelect.addEventListener('change', renderTablaGestion);
 
 async function handleDeleteGestion(e) {
     const btn = e.currentTarget;
@@ -1317,7 +1321,7 @@ document.getElementById('form-horario-masivo')?.addEventListener('submit', async
             statusMessage.className = 'message success';
             document.getElementById('modal-horario-masivo').style.display = 'none';
             renderHorariosAgrupados();
-            if (gestionSelect.value === 'horario') renderHorariosAgrupados('gestion-horarios-container');
+            if (gestionSelect && gestionSelect.value === 'horario') renderHorariosAgrupados('gestion-horarios-container');
             cargarFichasDesdeBackend(); // Refrescar si hubo cambios que afecten visualmente
         } else {
             alert("Error al actualizar el horario.");
