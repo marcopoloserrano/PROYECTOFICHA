@@ -36,7 +36,7 @@ router.post('/reservar', async (req, res) => {
 
         // 3. Crear el bloqueo
         await db.query(
-            'INSERT INTO Bloqueo_Temporal (id_medico, fecha, hora, id_paciente) VALUES (?, ?, ?, ?)',
+            'INSERT INTO bloqueo_temporal (id_medico, fecha, hora, id_paciente) VALUES (?, ?, ?, ?)',
             [id_medico, fecha, hora, id_paciente || null]
         );
 
@@ -51,7 +51,7 @@ router.delete('/liberar', async (req, res) => {
     const { id_medico, fecha, hora, id_paciente } = req.body;
     try {
         await db.query(
-            'DELETE FROM Bloqueo_Temporal WHERE id_medico = ? AND fecha = ? AND hora = ? AND id_paciente = ?',
+            'DELETE FROM bloqueo_temporal WHERE id_medico = ? AND fecha = ? AND hora = ? AND id_paciente = ?',
             [id_medico, fecha, hora, id_paciente]
         );
         res.json({ message: 'Bloqueo liberado' });
