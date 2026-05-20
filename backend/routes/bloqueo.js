@@ -14,7 +14,12 @@ router.post('/reservar', async (req, res) => {
         // 1. Limpiar bloqueos expirados primero
         await db.query('DELETE FROM bloqueo_temporal WHERE expira_en < CURRENT_TIMESTAMP');
 
-        // 2. Intentar reservar de forma ATÓMICA
+        // 2. Limpiar CUALQUIER otro bloqueo previo de ESTE paciente (para que no acumule varios slots)
+        if (id_paciente) {
+            await db.query('DELETE FROM bloqueo_temporal WHERE id_paciente = ?', [id_paciente]);
+        }
+
+        // 3. Intentar reservar de forma ATÓMICA
         try {
             await db.query(
                 'INSERT INTO bloqueo_temporal (id_medico, fecha, hora, id_paciente) VALUES (?, ?, ?, ?)',
@@ -45,17 +50,21 @@ router.post('/reservar', async (req, res) => {
 });
 
 // Liberar un bloqueo manualmente
-router.delete('/liberar', async (req, res) => {
+// Liberar un bloqueo manualmente (Soporta DELETE y POST para sendBeacon)
+router.delete('/liberar', liberarLogic);
+router.post('/liberar', liberarLogic);
+
+async function liberarLogic(req, res) {
     const { id_medico, fecha, hora, id_paciente } = req.body;
     try {
         await db.query(
             'DELETE FROM bloqueo_temporal WHERE id_medico = ? AND fecha = ? AND hora = ? AND id_paciente = ?',
             [id_medico, fecha, hora, id_paciente]
         );
-        res.json({ message: 'Bloqueo liberado' });
+        if (res) res.json({ message: 'Bloqueo liberado' });
     } catch (error) {
-        res.status(500).json({ message: 'Error al liberar bloqueo', error: error.message });
+        if (res) res.status(500).json({ message: 'Error al liberar bloqueo', error: error.message });
     }
-});
+}
 
 module.exports = router;

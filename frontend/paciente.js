@@ -399,10 +399,7 @@ function generarIntervalos(inicioStr, finStr) {
 }
 
 async function intentarBloquearSlot(hora, btn) {
-    // 1. Liberar cualquier bloqueo anterior de este usuario
-    if (horaSeleccionadaFinal) {
-        await liberarBloqueo();
-    }
+    // Ya no es necesario liberarBloqueo() manual antes, el Backend lo hace automáticamente por id_paciente
 
     try {
         const res = await fetch(`${API_URL}/bloqueos/reservar`, {
@@ -472,9 +469,23 @@ async function liberarBloqueo() {
                 id_paciente: userAuth.id
             })
         });
+    } catch (e) {} finally {
         if (bloqueoInterval) clearInterval(bloqueoInterval);
-    } catch (e) {}
+        horaSeleccionadaFinal = null;
+    }
 }
+
+// Liberar bloqueo al cerrar página (Best effort)
+window.addEventListener('beforeunload', () => {
+    if (horaSeleccionadaFinal) {
+        navigator.sendBeacon(`${API_URL}/bloqueos/liberar`, JSON.stringify({
+            id_medico: parseInt(selectMedico.value),
+            fecha: inputFecha.value,
+            hora: horaSeleccionadaFinal,
+            id_paciente: userAuth.id
+        }));
+    }
+});
 
 async function consultarDisponibilidad(fechaValue, idHorario) {
    if(!fechaValue || !horarioSeleccionadoCache) return;
