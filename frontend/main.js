@@ -26,6 +26,7 @@ let tabsHtml = `
   <button class="tab-btn" id="tab-ficha">🩺 Agendar Cita</button>
   <button class="tab-btn" id="tab-paciente">👤 Gestionar Pacientes</button>
   <button class="tab-btn" id="tab-ausencia">🛑 Permisos</button>
+  <button class="tab-btn" id="tab-asistencia">✅ Confirmar Asistencia</button>
 `;
 
 if (!isSecretaria) {
@@ -102,6 +103,30 @@ document.querySelector('#app').innerHTML = `
         <div id="tabla-fichas-agrupadas" style="margin-top:1.5rem;">
            <p>Cargando dashboard...</p>
         </div>
+      </div>
+
+      <!-- VISTA ASISTENCIA (NUEVO) -->
+      <div id="vista-asistencia" style="display: none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+              <h1 style="margin:0;">📋 Confirmación de Asistencia (Hoy)</h1>
+              <button class="action-btn" id="btn-refresh-asistencia" style="width:auto; background:#0ea5e9;">🔄 Actualizar Lista</button>
+          </div>
+          <div id="tabla-asistencia-container">
+              <table style="width:100%; border-collapse: collapse; text-align:left; background:white; border-radius:12px; overflow:hidden; border: 1px solid #e2e8f0;">
+                  <thead style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
+                      <tr>
+                          <th style="padding:12px;">Hora</th>
+                          <th style="padding:12px;">Paciente</th>
+                          <th style="padding:12px;">Especialidad / Médico</th>
+                          <th style="padding:12px;">Estado</th>
+                          <th style="padding:12px; text-align:center;">Acción</th>
+                      </tr>
+                  </thead>
+                  <tbody id="lista-asistencia-hoy">
+                      <tr><td colspan="5" style="text-align:center; padding:20px;">Cargando...</td></tr>
+                  </tbody>
+              </table>
+          </div>
       </div>
 
       <!-- VISTA 1: AGENDAR FICHA -->
@@ -293,7 +318,8 @@ const tabs = {
   lista: { btn: document.getElementById('tab-lista'), vista: document.getElementById('vista-lista-fichas') },
   ficha: { btn: document.getElementById('tab-ficha'), vista: document.getElementById('vista-ficha') },
   ausencia: { btn: document.getElementById('tab-ausencia'), vista: document.getElementById('vista-ausencia') },
-  paciente: { btn: document.getElementById('tab-paciente'), vista: document.getElementById('vista-paciente') }
+  paciente: { btn: document.getElementById('tab-paciente'), vista: document.getElementById('vista-paciente') },
+  asistencia: { btn: document.getElementById('tab-asistencia'), vista: document.getElementById('vista-asistencia') }
 };
 
 if (!isSecretaria) {
@@ -311,6 +337,7 @@ function activateTab(key) {
   tabs[key].btn.classList.add('active'); tabs[key].vista.style.display = 'block'; statusMessage.className = 'message';
   
   if (key === 'lista') renderFichasAgrupadas();
+  if (key === 'asistencia') cargarFichasAsistencia();
   if (key === 'horario' && !isSecretaria) renderHorariosAgrupados();
   if (key === 'gestion' && !isSecretaria) cargarDatosGestion();
 }
@@ -439,6 +466,64 @@ async function cargarDatosIniciales() {
   } catch(e) { console.error("Error cargando selects:", e); }
 }
 cargarDatosIniciales();
+
+async function cargarFichasAsistencia() {
+    const lista = document.getElementById('lista-asistencia-hoy');
+    try {
+        const res = await fetch(`${API_URL}/fichas/hoy`);
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.message || 'Error en el servidor');
+        }
+        const fichas = await res.json();
+        
+        if (fichas.length === 0) {
+            lista.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">No hay citas para hoy.</td></tr>';
+            return;
+        }
+
+        lista.innerHTML = '';
+        fichas.forEach(f => {
+            const colorEstado = f.estado === 'Confirmado' ? '#10b981' : (f.estado === 'Vigente' ? '#3b82f6' : '#64748b');
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #f1f5f9';
+            tr.innerHTML = `
+                <td style="padding:12px; font-weight:bold;">${f.hora.substring(0,5)}</td>
+                <td style="padding:12px;"><b>${f.paciente_nombre} ${f.paciente_apellido}</b><br><small>CI: ${f.ci}</small></td>
+                <td style="padding:12px;">
+                    <span style="display:block; font-weight:600; font-size:0.8rem;">${f.especialidad_nombre}</span>
+                    <span style="font-size:0.75rem; color:#64748b;">Dr. ${f.medico_nombre}</span>
+                </td>
+                <td style="padding:12px;">
+                    <span style="background:${colorEstado}; color:white; padding:3px 8px; border-radius:12px; font-size:0.7rem; font-weight:bold;">${f.estado}</span>
+                </td>
+                <td style="padding:12px; text-align:center;">
+                    ${f.estado === 'Vigente' ? 
+                        `<button class="action-btn" onclick="confirmarLlegadaPaciente(${f.id_ficha})" style="width:auto; padding:5px 10px; font-size:0.75rem; background:#10b981; margin:0;">Confirmar</button>` : 
+                        `<span style="color:#10b981;">✔️</span>`
+                    }
+                </td>
+            `;
+            lista.appendChild(tr);
+        });
+    } catch (e) {
+        lista.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#dc2626;">❌ Error: ${e.message}</td></tr>`;
+    }
+}
+
+window.confirmarLlegadaPaciente = async (id) => {
+    if (!confirm('¿Confirmar llegada?')) return;
+    try {
+        const res = await fetch(`${API_URL}/fichas/confirmar/${id}`, { method: 'PATCH' });
+        if (res.ok) {
+            cargarFichasAsistencia();
+        }
+    } catch (e) {}
+};
+
+document.getElementById('btn-refresh-asistencia').onclick = cargarFichasAsistencia;
+
+inicializarPortal();
 
 /* FORMS SUBMITS */
 document.getElementById('ausencia-form').addEventListener('submit', async (e) => {

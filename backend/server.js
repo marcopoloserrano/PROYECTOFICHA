@@ -16,12 +16,12 @@ const path = require('path');
 const db = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors({
-  origin: '*', // Permitir desde cualquier origen en desarrollo
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: process.env.FRONTEND_URL || '*', // En producción, es mejor especificar la URL del frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -63,6 +63,7 @@ app.use('/api/especialidades', require('./routes/especialidad'));
 app.use('/api/ausencias', require('./routes/ausencia'));
 app.use('/api/db-test', require('./routes/db-test'));
 app.use('/api/consultas', require('./routes/consultas'));
+app.use('/api/bloqueos', require('./routes/bloqueo'));
 
 // Middleware global de manejo de errores (Captura errores en las rutas)
 app.use((err, req, res, next) => {

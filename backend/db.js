@@ -24,7 +24,7 @@ pool.getConnection((err, connection) => {
     else if (err.code === 'ECONNREFUSED') console.error('- Conexión rechazada. ¿Cerraste el puerto o MySQL?');
     else console.error(`- Código de error: ${err.code} | Mensaje: ${err.message}`);
   } else {
-    console.log('✅ Conectado exitosamente a la base de datos MySQL (Puerto 3336)');
+    console.log(`✅ Conectado exitosamente a la base de datos MySQL (Puerto ${process.env.DB_PORT || 3336})`);
     connection.release();
   }
 });

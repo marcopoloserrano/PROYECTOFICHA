@@ -1,3 +1,5 @@
+import { API_URL } from './config.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     // ── State ──────────────────────────────────────────────────
     const state = {
@@ -48,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (silent) el.refreshBtn.classList.add('spinning');
 
         try {
-            const res = await fetch('http://localhost:4000/api/db-test');
+            const res = await fetch(`${API_URL}/db-test`);
             const result = await res.json();
 
             if (result.success) {

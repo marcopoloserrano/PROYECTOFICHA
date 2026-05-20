@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:4000/api';
+import { API_URL } from './config.js';
 
 document.querySelector('#consultas-app').innerHTML = `
   <div class="glass-card" style="border-top: 5px solid purple; max-width: 1200px; margin: 0 auto;">

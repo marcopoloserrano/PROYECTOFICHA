@@ -97,7 +97,8 @@ CREATE TABLE IF NOT EXISTS Ficha (
     estado VARCHAR(50) DEFAULT 'Pendiente',
     FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente),
     FOREIGN KEY (id_medico) REFERENCES Medico(id_medico),
-    FOREIGN KEY (id_horario) REFERENCES Horario(id_horario)
+    FOREIGN KEY (id_horario) REFERENCES Horario(id_horario),
+    UNIQUE KEY unique_cita (id_medico, fecha, hora)
 );
 
 -- 11. Tabla Historial_Clinico
@@ -212,15 +213,35 @@ CREATE TRIGGER evitar_doble_ficha_paciente
 BEFORE INSERT ON Ficha
 FOR EACH ROW
 BEGIN
-    IF EXISTS (
-        SELECT 1 FROM Ficha
-        WHERE id_paciente = NEW.id_paciente
-        AND fecha = NEW.fecha
-        AND estado IN ('Pendiente', 'Vigente')
-    ) THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Error: Ya tienes una ficha reservada para este día';
+    DECLARE v_cobertura INT;
+    
+    -- Obtener la cobertura del paciente
+    SELECT id_cobertura INTO v_cobertura FROM Paciente WHERE id_paciente = NEW.id_paciente;
+    
+    -- Solo aplicar restricción si es SUS (id_cobertura = 1)
+    IF v_cobertura = 1 THEN
+        IF EXISTS (
+            SELECT 1 FROM Ficha
+            WHERE id_paciente = NEW.id_paciente
+            AND YEARWEEK(fecha, 1) = YEARWEEK(NEW.fecha, 1)
+            AND estado NOT IN ('Cancelado', 'Anulado')
+        ) THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Error: Al ser paciente SUS, para esa semana ya no puedes reservar una ficha';
+        END IF;
     END IF;
 END$$
 
 DELIMITER ;
+
+-- 13. Tabla Bloqueo_Temporal (Para efecto Ticketmaster)
+CREATE TABLE IF NOT EXISTS Bloqueo_Temporal (
+    id_bloqueo INT AUTO_INCREMENT PRIMARY KEY,
+    id_medico INT NOT NULL,
+    fecha DATE NOT NULL,
+    hora TIME NOT NULL,
+    id_paciente INT,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expira_en TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 5 MINUTE),
+    FOREIGN KEY (id_medico) REFERENCES Medico(id_medico)
+);

@@ -8,6 +8,7 @@ let medicosDisponibles = [];
 let todosLosHorarios = [];
 let horarioSeleccionadoCache = null;
 let horaSeleccionadaFinal = null;
+let bloqueoInterval = null; // Timer para el bloqueo
 
 // Convert cobertura ID a texto
 const coberturasMap = { 1: 'SUS', 2: 'PARTICULAR', 3: 'SEGURO' };
@@ -45,6 +46,21 @@ document.querySelector('#patient-app').innerHTML = `
         <div style="flex: 1; min-width: 150px;">
             <p style="margin:0; font-size:0.8rem; color:#64748b; font-weight:bold;">N° Historial Médico</p>
             <p style="margin:5px 0 0 0; font-size:1.1rem; color:var(--primary-color); font-weight:800;">#${userAuth.numero_historial}</p>
+        </div>
+    </div>
+
+    <!-- MENSAJE ESPECÍFICO SUS (OCULTO POR DEFECTO) -->
+    <div id="sus-warning-box" style="display:none; background: #fffbeb; border: 1px solid #f59e0b; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
+        <p style="margin:0; color:#92400e; font-weight:700; font-size:0.9rem;">
+            ⚠️ Ya tienes una ficha registrada para esta semana. Al ser beneficiario del SUS, solo puedes reservar una ficha semanal y deberás esperar hasta la próxima semana para una nueva atención.
+        </p>
+    </div>
+
+    <!-- SECCIÓN: MIS CITAS RECIENTES -->
+    <div id="historial-citas-box" style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-bottom: 1.5rem; display:none;">
+        <h3 style="margin-top:0; color:var(--primary-color); font-size:1rem; border-bottom: 1px solid #f1f5f9; padding-bottom:10px;">📋 Mis Citas Registradas</h3>
+        <div id="lista-fichas-paciente" style="max-height: 200px; overflow-y:auto;">
+            <p style="font-size:0.8rem; color:#64748b;">Cargando historial...</p>
         </div>
     </div>
     
@@ -146,7 +162,7 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 
 async function inicializarPortal() {
   try {
-    // 1. Cargar Especialidades en botones
+    // 1. Cargar Especialidades en botones (Primero cargamos la UI)
     const reqEsp = await fetch(API_URL + '/especialidades');
     const especialidades = await reqEsp.json();
     renderEspecialidades(especialidades);
@@ -156,6 +172,40 @@ async function inicializarPortal() {
 
     const req3 = await fetch(API_URL + '/horarios');
     todosLosHorarios = await req3.json();
+
+    // 2.1 Cargar Historial de Fichas del Paciente (Siempre cargar historial)
+    cargarHistorialPaciente();
+
+    // 2. Verificar si ya tiene ficha esta semana (Después de cargar para no trabar la UI)
+    try {
+        const resVerif = await fetch(`${API_URL}/fichas/verificar-semana/${userAuth.id}`);
+        if (resVerif.ok) {
+            const dataVerif = await resVerif.json();
+            if (dataVerif.tieneFicha) {
+                // Mostrar mensaje general
+                msg.innerHTML = `⚠️ <b>Reserva Existente:</b> ${dataVerif.message}<br>Solo se permite una cita por semana.`;
+                msg.className = 'message error';
+                btnSubmit.disabled = true;
+                btnSubmit.textContent = 'Ya tienes una cita esta semana';
+                
+                // Si es SUS (id_cobertura === 1), mostrar mensaje especial debajo de datos
+                if (userAuth.id_cobertura == 1) {
+                    document.getElementById('sus-warning-box').style.display = 'block';
+                }
+
+                // Bloqueamos las especialidades y el formulario
+                const form = document.getElementById('patient-ficha-form');
+                form.style.opacity = '0.4';
+                form.style.pointerEvents = 'none';
+                form.style.filter = 'grayscale(1)';
+                
+                // Mostrar un mensaje flotante o más visible si fuera necesario
+                return; // Detenemos aquí si ya tiene ficha
+            }
+        }
+    } catch (verifErr) {
+        console.error("Error verificando semana:", verifErr);
+    }
 
     // 3. Cargar ausencias FILTRADAS (Hoy hasta Domingo)
     const req4 = await fetch(API_URL + '/ausencias');
@@ -185,6 +235,36 @@ async function inicializarPortal() {
     }
   } catch(e) { console.error("Init Error", e); }
 }
+async function cargarHistorialPaciente() {
+    try {
+        const res = await fetch(`${API_URL}/fichas/paciente/${userAuth.id}`);
+        const fichas = await res.json();
+        const contenedor = document.getElementById('lista-fichas-paciente');
+        const box = document.getElementById('historial-citas-box');
+        
+        if (fichas.length > 0) {
+            box.style.display = 'block';
+            contenedor.innerHTML = '';
+            fichas.forEach(f => {
+                const colorEstado = f.estado === 'Vigente' ? '#10b981' : '#64748b';
+                contenedor.innerHTML += `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size:0.85rem;">
+                        <div>
+                            <b>${f.especialidad_nombre}</b> - Dr. ${f.medico_nombre}<br>
+                            <span style="color:#64748b;">${formatearFecha(f.fecha.split('T')[0])} a las ${f.hora.substring(0,5)}</span>
+                        </div>
+                        <span style="background:${colorEstado}; color:white; padding:3px 8px; border-radius:10px; font-size:0.7rem; font-weight:bold;">${f.estado}</span>
+                    </div>
+                `;
+            });
+        } else {
+            box.style.display = 'none';
+        }
+    } catch (e) {
+        console.error("Error historial", e);
+    }
+}
+
 inicializarPortal();
 
 // (Búsqueda eliminada, ahora usa el userAuth de localStorage para el ID del paciente)
@@ -317,6 +397,84 @@ function generarIntervalos(inicioStr, finStr) {
     return intervalos;
 }
 
+async function intentarBloquearSlot(hora, btn) {
+    // 1. Liberar cualquier bloqueo anterior de este usuario
+    if (horaSeleccionadaFinal) {
+        await liberarBloqueo();
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/bloqueos/reservar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_medico: parseInt(selectMedico.value),
+                fecha: inputFecha.value,
+                hora: hora,
+                id_paciente: userAuth.id
+            })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            horaSeleccionadaFinal = hora;
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `Confirmar Cita a las ${hora} <br><small>Reserva expira en 5:00</small>`;
+            
+            iniciarContadorBloqueo(5 * 60);
+            msg.textContent = '✅ Horario apartado por 5 minutos.';
+            msg.className = 'message success';
+        } else {
+            msg.textContent = '⚠️ ' + data.message;
+            msg.className = 'message error';
+            // Refrescar disponibilidad
+            consultarDisponibilidad(inputFecha.value, inputHorarioId.value);
+        }
+    } catch (e) {
+        console.error("Error al bloquear", e);
+    }
+}
+
+function iniciarContadorBloqueo(segundos) {
+    if (bloqueoInterval) clearInterval(bloqueoInterval);
+    let tiempo = segundos;
+    bloqueoInterval = setInterval(() => {
+        tiempo--;
+        const mins = Math.floor(tiempo / 60);
+        const segs = tiempo % 60;
+        btnSubmit.innerHTML = `Confirmar Cita a las ${horaSeleccionadaFinal} <br><small>Reserva expira en ${mins}:${segs.toString().padStart(2, '0')}</small>`;
+        
+        if (tiempo <= 0) {
+            clearInterval(bloqueoInterval);
+            liberarBloqueo();
+            msg.textContent = '⚠️ El tiempo de reserva ha expirado.';
+            msg.className = 'message error';
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Tiempo expirado. Selecciona otra vez.';
+        }
+    }, 1000);
+}
+
+async function liberarBloqueo() {
+    if (!horaSeleccionadaFinal) return;
+    try {
+        await fetch(`${API_URL}/bloqueos/liberar`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_medico: parseInt(selectMedico.value),
+                fecha: inputFecha.value,
+                hora: horaSeleccionadaFinal,
+                id_paciente: userAuth.id
+            })
+        });
+        if (bloqueoInterval) clearInterval(bloqueoInterval);
+    } catch (e) {}
+}
+
 async function consultarDisponibilidad(fechaValue, idHorario) {
    if(!fechaValue || !horarioSeleccionadoCache) return;
    try {
@@ -345,18 +503,32 @@ async function consultarDisponibilidad(fechaValue, idHorario) {
               const btn = document.createElement('button');
               btn.type = 'button';
               const estaOcupado = payload.horas_ocupadas.includes(hora);
-              btn.className = `slot-btn ${estaOcupado ? 'occupied' : 'available'}`;
-              btn.disabled = estaOcupado;
-              btn.textContent = hora;
-              if(!estaOcupado) {
+              const estaEnProceso = payload.horas_en_proceso && payload.horas_en_proceso.includes(hora);
+              const esMiSeleccion = (hora === horaSeleccionadaFinal);
+              
+              // Si es mi selección, mostrar como seleccionado, sino verificar si está en proceso por otro
+              const claseEstado = estaOcupado ? 'occupied' : (esMiSeleccion ? 'selected' : (estaEnProceso ? 'in-process' : 'available'));
+              
+              btn.className = `slot-btn ${claseEstado}`;
+              btn.disabled = estaOcupado || (estaEnProceso && !esMiSeleccion);
+              
+              if (esMiSeleccion) {
+                  btn.textContent = hora;
+              } else if (estaEnProceso) {
+                  btn.innerHTML = `${hora}<br><small style="font-size:0.6rem;">En Proceso...</small>`;
+              } else {
+                  btn.textContent = hora;
+              }
+
+              if(!estaOcupado && (!estaEnProceso || esMiSeleccion)) {
                   hayDisponibles = true;
+                  btn.onclick = () => intentarBloquearSlot(hora, btn);
+              } else if (estaEnProceso && !esMiSeleccion) {
                   btn.onclick = () => {
-                      document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
-                      btn.classList.add('selected');
-                      horaSeleccionadaFinal = hora;
-                      btnSubmit.disabled = false;
-                      btnSubmit.textContent = 'Confirmar Cita a las ' + hora;
+                      msg.textContent = '⚠️ Alguien más está procesando este horario. Por favor espera o elige otro.';
+                      msg.className = 'message error';
                   };
+                  btn.disabled = false; // Permitir clic para mostrar mensaje
               }
               slotsGrid.appendChild(btn);
           });
@@ -386,6 +558,7 @@ formFicha.addEventListener('submit', async (e) => {
   try {
     const response = await fetch(API_URL + '/fichas/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (response.ok) {
+      if (bloqueoInterval) clearInterval(bloqueoInterval);
       document.getElementById('res-paciente').textContent = `${userAuth.nombre} ${userAuth.apellido}`;
       document.getElementById('res-especialidad').textContent = document.querySelector('.especialidad-btn.active').textContent;
       document.getElementById('res-medico').textContent = selectMedico.options[selectMedico.selectedIndex].text;
