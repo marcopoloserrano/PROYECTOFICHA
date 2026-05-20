@@ -857,7 +857,11 @@ async function cargarDatosGestion() {
         const res = await fetch(`${API_URL}/db-test`);
         const data = await res.json();
         if(data.success) {
-            dbTablesCache = data.tables;
+            // Normalizar nombres de tablas a minúsculas
+            dbTablesCache = {};
+            Object.keys(data.tables).forEach(key => {
+                dbTablesCache[key.toLowerCase()] = data.tables[key];
+            });
             renderTablaGestion();
         }
     } catch(e) { console.error("Error cargando DB para gestión:", e); }
