@@ -17,7 +17,7 @@ router.post('/registrar', async (req, res) => {
     const hashedPassword = await bcrypt.hash(contraseña, salt);
 
     // 2. Insertar en la BD
-    const sqlQuery = 'INSERT INTO Usuario (usuario, contraseña, id_rol) VALUES (?, ?, ?)';
+    const sqlQuery = 'INSERT INTO usuario (usuario, contraseña, id_rol) VALUES (?, ?, ?)';
     const valores = [usuario, hashedPassword, id_rol || null];
 
     const [resultado] = await db.query(sqlQuery, valores);
@@ -41,7 +41,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const [usuarios] = await db.query('SELECT * FROM Usuario WHERE usuario = ?', [usuario]);
+    const [usuarios] = await db.query('SELECT * FROM usuario WHERE usuario = ?', [usuario]);
     
     if (usuarios.length === 0) {
       return res.status(401).json({ message: 'El usuario no existe' });
@@ -77,7 +77,7 @@ router.post('/paciente-login', async (req, res) => {
   }
 
   try {
-    const [pacientes] = await db.query('SELECT * FROM Paciente WHERE ci = ? AND fecha_nacimiento = ?', [ci, fecha_nacimiento]);
+    const [pacientes] = await db.query('SELECT * FROM paciente WHERE ci = ? AND fecha_nacimiento = ?', [ci, fecha_nacimiento]);
     
     if (pacientes.length === 0) {
       return res.status(401).json({ message: 'Credenciales inválidas o paciente no registrado' });
@@ -86,7 +86,7 @@ router.post('/paciente-login', async (req, res) => {
     const paciente = pacientes[0];
 
     // Buscar si tiene historial
-    const [historial] = await db.query('SELECT MAX(id_historial) as num_historial FROM Historial_Clinico WHERE id_paciente = ?', [paciente.id_paciente]);
+    const [historial] = await db.query('SELECT MAX(id_historial) as num_historial FROM historial_clinico WHERE id_paciente = ?', [paciente.id_paciente]);
     const num_historial = historial[0].num_historial ? historial[0].num_historial : paciente.id_paciente;
 
     res.json({
