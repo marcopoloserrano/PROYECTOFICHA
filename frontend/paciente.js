@@ -425,10 +425,9 @@ async function intentarBloquearSlot(hora, btn) {
             btn.classList.add('selected');
             horaSeleccionadaFinal = hora;
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = `Confirmar Cita a las ${hora} <br><small>Reserva expira en 2:00</small>`;
+            btnSubmit.innerHTML = `Confirmar Cita a las ${hora}`;
             
-            iniciarContadorBloqueo(2 * 60);
-            msg.textContent = '✅ Horario apartado por 2 minutos.';
+            msg.textContent = '✅ Horario seleccionado.';
             msg.className = 'message success';
         } else {
             msg.textContent = '⚠️ ' + data.message;
@@ -441,25 +440,7 @@ async function intentarBloquearSlot(hora, btn) {
     }
 }
 
-function iniciarContadorBloqueo(segundos) {
-    if (bloqueoInterval) clearInterval(bloqueoInterval);
-    let tiempo = segundos;
-    bloqueoInterval = setInterval(() => {
-        tiempo--;
-        const mins = Math.floor(tiempo / 60);
-        const segs = tiempo % 60;
-        btnSubmit.innerHTML = `Confirmar Cita a las ${horaSeleccionadaFinal} <br><small>Reserva expira en ${mins}:${segs.toString().padStart(2, '0')}</small>`;
-        
-        if (tiempo <= 0) {
-            clearInterval(bloqueoInterval);
-            liberarBloqueo();
-            msg.textContent = '⚠️ El tiempo de reserva ha expirado.';
-            msg.className = 'message error';
-            btnSubmit.disabled = true;
-            btnSubmit.textContent = 'Tiempo expirado. Selecciona otra vez.';
-        }
-    }, 1000);
-}
+// Función de contador eliminada a petición del usuario
 
 async function liberarBloqueo() {
     if (!horaSeleccionadaFinal) return;
