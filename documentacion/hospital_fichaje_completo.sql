@@ -157,8 +157,9 @@ CREATE TABLE IF NOT EXISTS bloqueo_temporal (
     hora TIME NOT NULL,
     id_paciente INT,
     creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expira_en TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 5 MINUTE),
-    FOREIGN KEY (id_medico) REFERENCES medico(id_medico)
+    expira_en TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 2 MINUTE),
+    FOREIGN KEY (id_medico) REFERENCES medico(id_medico),
+    UNIQUE KEY uq_bloqueo (id_medico, fecha, hora)
 );
 
 -- =========================================================================

@@ -423,10 +423,10 @@ async function intentarBloquearSlot(hora, btn) {
             btn.classList.add('selected');
             horaSeleccionadaFinal = hora;
             btnSubmit.disabled = false;
-            btnSubmit.innerHTML = `Confirmar Cita a las ${hora} <br><small>Reserva expira en 5:00</small>`;
+            btnSubmit.innerHTML = `Confirmar Cita a las ${hora} <br><small>Reserva expira en 2:00</small>`;
             
-            iniciarContadorBloqueo(5 * 60);
-            msg.textContent = '✅ Horario apartado por 5 minutos.';
+            iniciarContadorBloqueo(2 * 60);
+            msg.textContent = '✅ Horario apartado por 2 minutos.';
             msg.className = 'message success';
         } else {
             msg.textContent = '⚠️ ' + data.message;

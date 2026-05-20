@@ -14,33 +14,30 @@ router.post('/reservar', async (req, res) => {
         // 1. Limpiar bloqueos expirados primero
         await db.query('DELETE FROM bloqueo_temporal WHERE expira_en < CURRENT_TIMESTAMP');
 
-        // 2. Verificar si ya existe un bloqueo activo o una ficha confirmada
-        const [bloqueoActual] = await db.query(
-            'SELECT id_bloqueo, id_paciente FROM bloqueo_temporal WHERE id_medico = ? AND fecha = ? AND hora = ?',
-            [id_medico, fecha, hora]
-        );
+        // 2. Intentar reservar de forma ATÓMICA
+        try {
+            await db.query(
+                'INSERT INTO bloqueo_temporal (id_medico, fecha, hora, id_paciente) VALUES (?, ?, ?, ?)',
+                [id_medico, fecha, hora, id_paciente || null]
+            );
+            return res.json({ message: 'Horario bloqueado temporalmente por 2 minutos' });
+        } catch (insertErr) {
+            // 3. Si falla por entrada duplicada, alguien más lo tiene (o yo mismo)
+            if (insertErr.code === 'ER_DUP_ENTRY') {
+                // Verificar si el bloqueo existente es MÍO para renovarlo o simplemente permitirlo
+                const [bloqueoActual] = await db.query(
+                    'SELECT id_paciente FROM bloqueo_temporal WHERE id_medico = ? AND fecha = ? AND hora = ?',
+                    [id_medico, fecha, hora]
+                );
 
-        if (bloqueoActual.length > 0) {
-            return res.status(409).json({ message: 'Este horario ya está siendo reservado por otro usuario.' });
+                if (bloqueoActual.length > 0 && bloqueoActual[0].id_paciente == id_paciente) {
+                    return res.json({ message: 'Sigues manteniendo tu reserva' });
+                }
+                
+                return res.status(409).json({ message: 'Este horario ya está siendo reservado por otro usuario.' });
+            }
+            throw insertErr; // Otro error
         }
-
-        // 2. Verificar si ya existe una FICHA confirmada
-        const [fichaExistente] = await db.query(
-            "SELECT id_ficha FROM ficha WHERE id_medico = ? AND fecha = ? AND hora = ? AND estado != 'Cancelado'",
-            [id_medico, fecha, hora]
-        );
-
-        if (fichaExistente.length > 0) {
-            return res.status(409).json({ message: 'Este horario ya ha sido reservado definitivamente' });
-        }
-
-        // 3. Crear el bloqueo
-        await db.query(
-            'INSERT INTO bloqueo_temporal (id_medico, fecha, hora, id_paciente) VALUES (?, ?, ?, ?)',
-            [id_medico, fecha, hora, id_paciente || null]
-        );
-
-        res.json({ message: 'Horario bloqueado temporalmente por 5 minutos' });
     } catch (error) {
         console.error('Error reserva:', error);
         res.status(500).json({ message: 'Error al reservar temporalmente: ' + error.message });
