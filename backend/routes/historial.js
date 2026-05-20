@@ -22,7 +22,7 @@ router.post('/crear', async (req, res) => {
 
   try {
     const sqlQuery = `
-      INSERT INTO Historial_Clinico (id_paciente, diagnostico, tratamiento, fecha) 
+      INSERT INTO historial_clinico (id_paciente, diagnostico, tratamiento, fecha) 
       VALUES (?, ?, ?, ?)
     `;
     const valores = [id_paciente, diagnostico, tratamiento || null, fecha || null];

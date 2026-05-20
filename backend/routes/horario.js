@@ -27,7 +27,7 @@ router.post('/crear', async (req, res) => {
 
   try {
     const sqlQuery = `
-      INSERT INTO Horario (id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas) 
+      INSERT INTO horario (id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas) 
       VALUES ?
     `;
 
@@ -62,7 +62,7 @@ router.post('/crear', async (req, res) => {
 router.delete('/eliminar/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const [result] = await db.query('DELETE FROM Horario WHERE id_horario = ?', [id]);
+    const [result] = await db.query('DELETE FROM horario WHERE id_horario = ?', [id]);
     if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Horario no encontrado.' });
     res.json({ success: true, message: `Horario #${id} eliminado correctamente.` });
   } catch (error) {
@@ -76,7 +76,7 @@ router.put('/actualizar/:id', async (req, res) => {
     const { id } = req.params;
     const { id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas } = req.body;
     const [result] = await db.query(
-      `UPDATE Horario SET id_medico=?, dia_semana=?, hora_inicio=?, hora_fin=?, fecha_inicio=?, fecha_fin=?, limite_fichas=?
+      `UPDATE horario SET id_medico=?, dia_semana=?, hora_inicio=?, hora_fin=?, fecha_inicio=?, fecha_fin=?, limite_fichas=?
        WHERE id_horario=?`,
       [id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas, id]
     );

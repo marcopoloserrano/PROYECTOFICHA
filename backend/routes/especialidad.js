@@ -21,7 +21,7 @@ router.post('/crear', async (req, res) => {
   }
 
   try {
-    const sqlQuery = 'INSERT INTO Especialidad (nombre) VALUES (?)';
+    const sqlQuery = 'INSERT INTO especialidad (nombre) VALUES (?)';
     const [resultado] = await db.query(sqlQuery, [nombre]);
 
     res.status(201).json({

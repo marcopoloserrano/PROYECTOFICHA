@@ -24,8 +24,8 @@ router.get('/disponibilidad', async (req, res) => {
     // Obtener los médicos de dicha especialidad
     const queryMedicos = `
       SELECT m.id_medico, m.nombre, m.apellido 
-      FROM Medico m
-      JOIN Medico_Especialidad me ON m.id_medico = me.id_medico
+      FROM medico m
+      JOIN medico_especialidad me ON m.id_medico = me.id_medico
       WHERE me.id_especialidad = ?
     `;
     const [medicos] = await db.query(queryMedicos, [especialidad_id]);
@@ -111,9 +111,9 @@ router.get('/ausencias', async (req, res) => {
   try {
     const query = `
       SELECT m.id_medico, m.nombre, m.apellido, a.fecha_ausencia, a.motivo
-      FROM Ausencia_Medico a
-      JOIN Medico m ON a.id_medico = m.id_medico
-      JOIN Medico_Especialidad me ON m.id_medico = me.id_medico
+      FROM ausencia_medico a
+      JOIN medico m ON a.id_medico = m.id_medico
+      JOIN medico_especialidad me ON m.id_medico = me.id_medico
       WHERE me.id_especialidad = ? AND a.fecha_ausencia >= CURDATE()
       ORDER BY a.fecha_ausencia ASC
     `;
