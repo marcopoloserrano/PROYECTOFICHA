@@ -292,12 +292,19 @@ document.querySelector('#app').innerHTML = `
     </div>
   </div>
   
-  // CAPTURAR ELEMENTOS DESPUÉS DE INYECTAR EL HTML
-  const gestionSelect = document.getElementById('gestion-tabla-select');
-  const filtroFechaFicha = document.getElementById('filtro-fecha-ficha');
+    ` : ''}
+       <div id="status-message" class="message"></div>
+     </div>
+   </div>
+`;
 
-  ${!isSecretaria ? `
-  <!-- MODAL DE EDICIÓN PARA VISTA GESTIÓN -->
+// CAPTURAR ELEMENTOS DESPUÉS DE INYECTAR EL HTML
+const gestionSelect = document.getElementById('gestion-tabla-select');
+const filtroFechaFicha = document.getElementById('filtro-fecha-ficha');
+
+// MODAL DE EDICIÓN PARA VISTA GESTIÓN (Añadir al final si es admin)
+if (!isSecretaria) {
+    const modalHtml = `
   <div id="gestion-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
      <div style="background:white; padding:2rem; border-radius:8px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
          <h2 id="gestion-modal-title">Modificar Registro</h2>
@@ -309,9 +316,9 @@ document.querySelector('#app').innerHTML = `
              </div>
          </form>
      </div>
-  </div>
-  ` : ''}
-`;
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
 
 document.getElementById('btn-logout').addEventListener('click', () => {
     localStorage.removeItem('userAuth');
