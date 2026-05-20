@@ -10,6 +10,7 @@ let todosLosHorarios = [];
 let horarioSeleccionadoCache = null;
 let horaSeleccionadaFinal = null;
 let bloqueoInterval = null; // Timer para el bloqueo
+let disponibilidadInterval = null; // Polling para refrescar slots
 
 // Convert cobertura ID a texto
 const coberturasMap = { 1: 'SUS', 2: 'PARTICULAR', 3: 'SEGURO' };
@@ -305,12 +306,16 @@ function handleEspecialidadChange(espId) {
 
 // --- RESTO DE LÓGICA (MÉDICOS, DÍAS, SLOTS) ---
 function resetValidation() {
-    stepFecha.style.display = 'none';
-    cardDisponibilidad.style.display = 'none';
+    inputHorarioId.value = '';
+    inputFecha.value = '';
+    horaSeleccionadaFinal = null;
     btnSubmit.disabled = true;
     btnSubmit.textContent = 'Completa los pasos anteriores';
+    cardDisponibilidad.style.display = 'none';
+    stepFecha.style.display = 'none';
     msg.className = 'message';
-    horaSeleccionadaFinal = null;
+    if (bloqueoInterval) clearInterval(bloqueoInterval);
+    if (disponibilidadInterval) clearInterval(disponibilidadInterval);
 }
 
 selectMedico.addEventListener('change', (e) => {
@@ -488,69 +493,87 @@ window.addEventListener('beforeunload', () => {
 });
 
 async function consultarDisponibilidad(fechaValue, idHorario) {
-   if(!fechaValue || !horarioSeleccionadoCache) return;
-   try {
-      cardDisponibilidad.style.display = 'block';
-      slotsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center;"><p class="loader"></p> Buscando turnos disponibles...</div>';
+    if(!fechaValue || !horarioSeleccionadoCache) return;
+    
+    // 1. Mostrar loader la primera vez
+    cardDisponibilidad.style.display = 'block';
+    slotsGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center;"><p class="loader"></p> Buscando turnos disponibles...</div>';
 
-      const res = await fetch(`${API_URL}/fichas/disponibles?id_horario=${idHorario}&fecha=${fechaValue}`);
-      const payload = await res.json();
+    // 2. Ejecutar primera carga inmediata
+    await refrescarSlots(fechaValue, idHorario);
 
-      if(res.ok) {
-          msg.className = 'message';
-          if (payload.motivo_ausencia) {
-             slotsGrid.innerHTML = `<p style="color:#991b1b; grid-column: 1/-1; text-align:center; background:#fee2e2; padding:10px; border-radius:8px;">🛑 El médico no atiende este día: <b>${payload.motivo_ausencia}</b></p>`;
-             btnSubmit.disabled = true;
-             return;
-          }
-          slotsGrid.innerHTML = '';
-          let todosLosBloques = generarIntervalos(horarioSeleccionadoCache.hora_inicio, horarioSeleccionadoCache.hora_fin);
-          
-          // Limitamos a solo las primeras "N" fichas que el médico tiene asignadas por día
-          if (horarioSeleccionadoCache.limite_fichas) {
-              todosLosBloques = todosLosBloques.slice(0, horarioSeleccionadoCache.limite_fichas);
-          }
-          let hayDisponibles = false;
-          todosLosBloques.forEach(hora => {
-              const btn = document.createElement('button');
-              btn.type = 'button';
-              const estaOcupado = payload.horas_ocupadas.includes(hora);
-              const estaEnProceso = payload.horas_en_proceso && payload.horas_en_proceso.includes(hora);
-              const esMiSeleccion = (hora === horaSeleccionadaFinal);
-              
-              // Si es mi selección, mostrar como seleccionado, sino verificar si está en proceso por otro
-              const claseEstado = estaOcupado ? 'occupied' : (esMiSeleccion ? 'selected' : (estaEnProceso ? 'in-process' : 'available'));
-              
-              btn.className = `slot-btn ${claseEstado}`;
-              btn.disabled = estaOcupado || (estaEnProceso && !esMiSeleccion);
-              
-              if (esMiSeleccion) {
-                  btn.textContent = hora;
-              } else if (estaEnProceso) {
-                  btn.innerHTML = `${hora}<br><small style="font-size:0.6rem;">En Proceso...</small>`;
-              } else {
-                  btn.textContent = hora;
-              }
+    // 3. Configurar polling (cada 3 segundos) para ver lo que otros pacientes bloquean
+    if (disponibilidadInterval) clearInterval(disponibilidadInterval);
+    disponibilidadInterval = setInterval(() => {
+        refrescarSlots(fechaValue, idHorario, true); // true = modo silencioso (sin loader)
+    }, 3000);
+}
 
-              if(!estaOcupado && (!estaEnProceso || esMiSeleccion)) {
-                  hayDisponibles = true;
-                  btn.onclick = () => intentarBloquearSlot(hora, btn);
-              } else if (estaEnProceso && !esMiSeleccion) {
-                  btn.onclick = () => {
-                      msg.textContent = '⚠️ Alguien más está procesando este horario. Por favor espera o elige otro.';
-                      msg.className = 'message error';
-                  };
-                  btn.disabled = false; // Permitir clic para mostrar mensaje
-              }
-              slotsGrid.appendChild(btn);
-          });
-          document.getElementById('cupos-number').textContent = payload.disponibles > 0 ? `${payload.disponibles} espacios libres` : 'Sin espacios disponibles';
-          if(!hayDisponibles) slotsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#991b1b;">Lo sentimos, este horario está lleno.</p>';
-      } else {
-          msg.textContent = 'Error: ' + payload.message;
-          msg.className = 'message error';
-      }
-   } catch(error) { console.error("Cupos Error", error); }
+async function refrescarSlots(fechaValue, idHorario, silencioso = false) {
+    try {
+        const res = await fetch(`${API_URL}/fichas/disponibles?id_horario=${idHorario}&fecha=${fechaValue}`);
+        const payload = await res.json();
+
+        if(res.ok) {
+            if (payload.motivo_ausencia) {
+               slotsGrid.innerHTML = `<p style="color:#991b1b; grid-column: 1/-1; text-align:center; background:#fee2e2; padding:10px; border-radius:8px;">🛑 El médico no atiende este día: <b>${payload.motivo_ausencia}</b></p>`;
+               btnSubmit.disabled = true;
+               if (disponibilidadInterval) clearInterval(disponibilidadInterval);
+               return;
+            }
+            
+            let todosLosBloques = generarIntervalos(horarioSeleccionadoCache.hora_inicio, horarioSeleccionadoCache.hora_fin);
+            if (horarioSeleccionadoCache.limite_fichas) {
+                todosLosBloques = todosLosBloques.slice(0, horarioSeleccionadoCache.limite_fichas);
+            }
+
+            // Guardamos el foco/estado si no es la primera carga
+            const fragment = document.createDocumentFragment();
+            let hayDisponibles = false;
+
+            todosLosBloques.forEach(hora => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const estaOcupado = payload.horas_ocupadas.includes(hora);
+                const estaEnProceso = payload.horas_en_proceso && payload.horas_en_proceso.includes(hora);
+                const esMiSeleccion = (hora === horaSeleccionadaFinal);
+                
+                const claseEstado = estaOcupado ? 'occupied' : (esMiSeleccion ? 'selected' : (estaEnProceso ? 'in-process' : 'available'));
+                
+                btn.className = `slot-btn ${claseEstado}`;
+                btn.disabled = estaOcupado || (estaEnProceso && !esMiSeleccion);
+                
+                if (esMiSeleccion) {
+                    btn.textContent = hora;
+                } else if (estaEnProceso) {
+                    btn.innerHTML = `${hora}<br><small style="font-size:0.6rem;">En Proceso...</small>`;
+                } else {
+                    btn.textContent = hora;
+                }
+
+                if(!estaOcupado && (!estaEnProceso || esMiSeleccion)) {
+                    hayDisponibles = true;
+                    btn.onclick = () => intentarBloquearSlot(hora, btn);
+                } else if (estaEnProceso && !esMiSeleccion) {
+                    btn.onclick = () => {
+                        msg.textContent = '⚠️ Alguien más está procesando este horario. Por favor espera o elige otro.';
+                        msg.className = 'message error';
+                    };
+                    btn.disabled = false;
+                }
+                fragment.appendChild(btn);
+            });
+
+            // Solo actualizamos el DOM si el contenido ha cambiado o es la primera carga
+            // Para simplificar, comparamos el innerHTML o simplemente reemplazamos
+            // Usamos innerHTML solo si no estamos "escribiendo" algo (silencioso)
+            slotsGrid.innerHTML = '';
+            slotsGrid.appendChild(fragment);
+
+            document.getElementById('cupos-number').textContent = payload.disponibles > 0 ? `${payload.disponibles} espacios libres` : 'Sin espacios disponibles';
+            if(!hayDisponibles) slotsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#991b1b;">Lo sentimos, este horario está lleno.</p>';
+        }
+    } catch(error) { console.error("Polling Error", error); }
 }
 
 formFicha.addEventListener('submit', async (e) => {
