@@ -404,6 +404,19 @@ function generarIntervalos(inicioStr, finStr) {
 }
 
 async function intentarBloquearSlot(hora, btn) {
+    // Si ya es nuestra selección actual, deseleccionamos (liberamos)
+    if (hora === horaSeleccionadaFinal) {
+        await liberarBloqueo();
+        btn.classList.remove('selected');
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'Completa los pasos anteriores';
+        msg.textContent = 'Horario deseleccionado y liberado.';
+        msg.className = 'message';
+        // Refrescar para que otros vean que está libre
+        refrescarSlots(inputFecha.value, inputHorarioId.value, true);
+        return;
+    }
+
     // Ya no es necesario liberarBloqueo() manual antes, el Backend lo hace automáticamente por id_paciente
 
     try {
