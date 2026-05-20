@@ -530,7 +530,7 @@ window.confirmarLlegadaPaciente = async (id) => {
 
 document.getElementById('btn-refresh-asistencia').onclick = cargarFichasAsistencia;
 
-inicializarPortal();
+// inicializarPortal(); // Eliminado porque pertenece a paciente.js
 
 /* FORMS SUBMITS */
 document.getElementById('ausencia-form').addEventListener('submit', async (e) => {
