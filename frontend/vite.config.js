@@ -11,5 +11,17 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        login: './login.html',
+        dbView: './db-view.html',
+        consultas: './consultas.html',
+        paciente: './paciente.html',
+        secretaria: './secretaria.html'
+      }
+    }
   }
 })
