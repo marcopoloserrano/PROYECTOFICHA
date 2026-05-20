@@ -42,7 +42,8 @@ router.post('/reservar', async (req, res) => {
 
         res.json({ message: 'Horario bloqueado temporalmente por 5 minutos' });
     } catch (error) {
-        res.status(500).json({ message: 'Error al reservar temporalmente', error: error.message });
+        console.error('Error reserva:', error);
+        res.status(500).json({ message: 'Error al reservar temporalmente: ' + error.message });
     }
 });
 
