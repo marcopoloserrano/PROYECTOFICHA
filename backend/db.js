@@ -9,7 +9,10 @@ const pool = mysql.createPool({
   port: process.env.DB_PORT || 3336,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 // Promisify for Node.js async/await
