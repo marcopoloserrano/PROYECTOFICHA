@@ -101,14 +101,14 @@ router.put('/actualizar-medico/:id_medico', async (req, res) => {
 
   try {
     // 1. Eliminar horarios actuales del médico
-    await connection.query('DELETE FROM Horario WHERE id_medico = ?', [id_medico]);
+    await connection.query('DELETE FROM horario WHERE id_medico = ?', [id_medico]);
 
     // 2. Insertar los nuevos horarios
     const fecha_inicio = '2020-01-01';
     const fecha_fin = '2099-12-31';
 
     const sqlInsert = `
-      INSERT INTO Horario (id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas) 
+      INSERT INTO horario (id_medico, dia_semana, hora_inicio, hora_fin, fecha_inicio, fecha_fin, limite_fichas) 
       VALUES ?
     `;
 

@@ -22,7 +22,7 @@ router.post('/crear', async (req, res) => {
 
   try {
     const sqlQuery = `
-      INSERT INTO Pago (id_ficha, monto, metodo, estado_pago) 
+      INSERT INTO pago (id_ficha, monto, metodo, estado_pago) 
       VALUES (?, ?, ?, ?)
     `;
     const valores = [id_ficha, monto, metodo || null, estado_pago || 'Pendiente'];

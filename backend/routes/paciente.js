@@ -28,7 +28,7 @@ router.post('/crear', async (req, res) => {
   try {
     // Consulta SQL usando los nombres reales de ts columnas
     const sqlQuery = `
-      INSERT INTO Paciente (nombre, apellido, ci, fecha_nacimiento, telefono, correo, id_cobertura) 
+      INSERT INTO paciente (nombre, apellido, ci, fecha_nacimiento, telefono, correo, id_cobertura) 
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const valores = [
@@ -65,9 +65,21 @@ router.delete('/eliminar/:id', async (req, res) => {
   await connection.beginTransaction();
 
   try {
-    // Al no tener todas las tablas claras a la mano, borramos las principales dependencias
-    await connection.query('DELETE FROM Ficha WHERE id_paciente = ?', [id]);
-    const [result] = await connection.query('DELETE FROM Paciente WHERE id_paciente = ?', [id]);
+    // 1. Obtener todas las fichas del paciente para borrar sus pagos
+    const [fichas] = await connection.query('SELECT id_ficha FROM ficha WHERE id_paciente = ?', [id]);
+    
+    for (const f of fichas) {
+        await connection.query('DELETE FROM pago WHERE id_ficha = ?', [f.id_ficha]);
+    }
+
+    // 2. Borrar historial clínico
+    await connection.query('DELETE FROM historial_clinico WHERE id_paciente = ?', [id]);
+
+    // 3. Borrar fichas
+    await connection.query('DELETE FROM ficha WHERE id_paciente = ?', [id]);
+
+    // 4. Borrar paciente
+    const [result] = await connection.query('DELETE FROM paciente WHERE id_paciente = ?', [id]);
 
     if (result.affectedRows === 0) {
       await connection.rollback();

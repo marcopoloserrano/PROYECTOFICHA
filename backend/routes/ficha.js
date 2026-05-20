@@ -185,7 +185,12 @@ router.get('/disponibles', async (req, res) => {
     });
 
   } catch (err) {
-    res.status(500).json({ message: 'Error del servidor calculando cupos', err: err.message });
+    console.error('Error calculando cupos:', err);
+    res.status(500).json({ 
+        message: 'Error del servidor calculando cupos', 
+        error: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined 
+    });
   }
 });
 
