@@ -18,7 +18,7 @@ const config = {
   host: 'mysql-24ac1a4b-marco-8bff.a.aivencloud.com',
   port: 12407, // Ejemplo: 12407 (sin comillas)
   user: 'avnadmin',
-  password: '',
+  password: 'AVNS_hlspJOUOuPdnO4JV2dD',
   database: 'defaultdb', // Aiven suele llamar a la BD inicial defaultdb
   ssl: {
     rejectUnauthorized: false

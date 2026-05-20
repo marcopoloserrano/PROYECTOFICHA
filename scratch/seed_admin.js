@@ -6,11 +6,11 @@ async function sedAdmin() {
   console.log('🚀 Creando usuario administrador inicial en Aiven...');
 
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT,
+    host: process.env.DB_HOST || 'mysql-24ac1a4b-marco-8bff.a.aivencloud.com',
+    user: process.env.DB_USER || 'avnadmin',
+    password: process.env.DB_PASSWORD || 'AVNS_hlspJOUOuPdnO4JV2dD',
+    database: process.env.DB_NAME || 'defaultdb',
+    port: 12407, // Forzamos puerto de Aiven para evitar confusiones locales
     ssl: { rejectUnauthorized: false }
   });
 
