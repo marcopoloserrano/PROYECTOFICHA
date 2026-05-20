@@ -75,12 +75,12 @@ router.get('/disponibilidad', async (req, res) => {
       }
 
       // c) Contar las fichas ya asignadas para esa fecha y horario
-      const [fichasData] = await db.query(
-        'SELECT COUNT(*) as tomadas FROM Ficha WHERE id_medico = ? AND id_horario = ? AND fecha = ? AND estado != "Cancelado"', 
+      const [fichas] = await db.query(
+        "SELECT COUNT(*) as tomadas FROM ficha WHERE id_medico = ? AND id_horario = ? AND fecha = ? AND estado != 'Cancelado'", 
         [p_medico, horario.id_horario, fecha]
       );
       
-      const tomadas = fichasData[0].tomadas;
+      const tomadas = fichas[0].tomadas;
       const disponibles = limite - tomadas;
 
       resultados.push({

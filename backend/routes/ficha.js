@@ -88,7 +88,7 @@ router.patch('/confirmar/:id_ficha', async (req, res) => {
     const { id_ficha } = req.params;
     try {
         const [resultado] = await db.query(
-            'UPDATE ficha SET estado = "Confirmado" WHERE id_ficha = ? AND estado = "Vigente"',
+            "UPDATE ficha SET estado = 'Confirmado' WHERE id_ficha = ? AND estado = 'Vigente'",
             [id_ficha]
         );
 
@@ -155,7 +155,7 @@ router.get('/disponibles', async (req, res) => {
 
     // 3. Obtener las horas que ya están ocupadas
     const [fichasData] = await db.query(
-        'SELECT hora FROM ficha WHERE id_horario = ? AND fecha = ? AND estado != "Cancelado"', 
+        "SELECT hora FROM ficha WHERE id_horario = ? AND fecha = ? AND estado != 'Cancelado'", 
         [id_horario, fecha]
     );
     
@@ -214,7 +214,7 @@ router.post('/crear', async (req, res) => {
             `SELECT id_ficha FROM ficha 
              WHERE id_paciente = ? 
              AND YEARWEEK(fecha, 1) = YEARWEEK(?, 1)
-             AND estado NOT IN ("Cancelado", "Anulado")`,
+             AND estado NOT IN ('Cancelado', 'Anulado')`,
             [id_paciente, fecha]
         );
 

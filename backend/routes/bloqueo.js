@@ -26,7 +26,7 @@ router.post('/reservar', async (req, res) => {
 
         // 2. Verificar si ya existe una FICHA confirmada
         const [fichaExistente] = await db.query(
-            'SELECT id_ficha FROM ficha WHERE id_medico = ? AND fecha = ? AND hora = ? AND estado != "Cancelado"',
+            "SELECT id_ficha FROM ficha WHERE id_medico = ? AND fecha = ? AND hora = ? AND estado != 'Cancelado'",
             [id_medico, fecha, hora]
         );
 
