@@ -8,8 +8,8 @@ router.get('/', async (req, res) => {
     // Usamos GROUP_CONCAT para obtener un string csv de las especialidades, ya que JSON_ARRAYAGG puede dar problemas en versiones viejas de MySQL.
     const [medicos] = await db.query(`
       SELECT m.*, GROUP_CONCAT(me.id_especialidad) as especialidades
-      FROM Medico m
-      LEFT JOIN Medico_Especialidad me ON m.id_medico = me.id_medico
+      FROM medico m
+      LEFT JOIN medico_especialidad me ON m.id_medico = me.id_medico
       GROUP BY m.id_medico
     `);
 
@@ -41,14 +41,14 @@ router.post('/crear', async (req, res) => {
 
   try {
     // 1. Insertar Medico
-    const sqlQuery = 'INSERT INTO Medico (nombre, apellido, telefono) VALUES (?, ?, ?)';
+    const sqlQuery = 'INSERT INTO medico (nombre, apellido, telefono) VALUES (?, ?, ?)';
     const valores = [nombre, apellido, telefono || null];
     const [resultado] = await connection.query(sqlQuery, valores);
     const id_medico = resultado.insertId;
 
     // 2. Insertar Especialidades (si las enviaron por el body en un arreglo [1, 3, etc])
     if (especialidades && Array.isArray(especialidades) && especialidades.length > 0) {
-      const sqlEspecialidad = 'INSERT INTO Medico_Especialidad (id_medico, id_especialidad) VALUES ?';
+      const sqlEspecialidad = 'INSERT INTO medico_especialidad (id_medico, id_especialidad) VALUES ?';
       const valuesEspecialidad = especialidades.map(id_esp => [id_medico, id_esp]);
       await connection.query(sqlEspecialidad, [valuesEspecialidad]);
     }
@@ -81,8 +81,8 @@ router.put('/actualizar/:id', async (req, res) => {
   await connection.beginTransaction();
 
   try {
-    // 1. Actualizar Medico
-    const sqlQuery = 'UPDATE Medico SET nombre = ?, apellido = ?, telefono = ? WHERE id_medico = ?';
+    // 1. Actualizar medico
+    const sqlQuery = 'UPDATE medico SET nombre = ?, apellido = ?, telefono = ? WHERE id_medico = ?';
     const valores = [nombre, apellido, telefono || null, id];
     const [resultado] = await connection.query(sqlQuery, valores);
 
@@ -92,11 +92,11 @@ router.put('/actualizar/:id', async (req, res) => {
     }
 
     // 2. Borrar especialidades antiguas
-    await connection.query('DELETE FROM Medico_Especialidad WHERE id_medico = ?', [id]);
+    await connection.query('DELETE FROM medico_especialidad WHERE id_medico = ?', [id]);
 
     // 3. Insertar las nuevas especialidades recibidas
     if (especialidades && Array.isArray(especialidades) && especialidades.length > 0) {
-      const sqlEspecialidad = 'INSERT INTO Medico_Especialidad (id_medico, id_especialidad) VALUES ?';
+      const sqlEspecialidad = 'INSERT INTO medico_especialidad (id_medico, id_especialidad) VALUES ?';
       const valuesEspecialidad = especialidades.map(id_esp => [id, id_esp]);
       await connection.query(sqlEspecialidad, [valuesEspecialidad]);
     }
@@ -120,11 +120,11 @@ router.delete('/eliminar/:id', async (req, res) => {
   await connection.beginTransaction();
 
   try {
-    await connection.query('DELETE FROM Ficha WHERE id_medico = ?', [id]);
-    await connection.query('DELETE FROM Horario WHERE id_medico = ?', [id]);
-    await connection.query('DELETE FROM Ausencia_Medico WHERE id_medico = ?', [id]);
-    await connection.query('DELETE FROM Medico_Especialidad WHERE id_medico = ?', [id]);
-    const [result] = await connection.query('DELETE FROM Medico WHERE id_medico = ?', [id]);
+    await connection.query('DELETE FROM ficha WHERE id_medico = ?', [id]);
+    await connection.query('DELETE FROM horario WHERE id_medico = ?', [id]);
+    await connection.query('DELETE FROM ausencia_medico WHERE id_medico = ?', [id]);
+    await connection.query('DELETE FROM medico_especialidad WHERE id_medico = ?', [id]);
+    const [result] = await connection.query('DELETE FROM medico WHERE id_medico = ?', [id]);
 
     if (result.affectedRows === 0) {
       await connection.rollback();

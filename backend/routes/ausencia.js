@@ -7,8 +7,8 @@ router.get('/', async (req, res) => {
   try {
     const query = `
       SELECT a.id_ausencia, a.fecha_ausencia, a.motivo, m.nombre, m.apellido
-      FROM Ausencia_Medico a
-      JOIN Medico m ON a.id_medico = m.id_medico
+      FROM ausencia_medico a
+      JOIN medico m ON a.id_medico = m.id_medico
       ORDER BY a.fecha_ausencia ASC
     `;
     const [ausencias] = await db.query(query);
@@ -47,7 +47,7 @@ router.post('/crear', async (req, res) => {
         valuesAInsertar.push([id_medico, fechaStr, motivo || 'Permiso/Vacación Rango']);
     }
 
-    const sqlQuery = 'INSERT INTO Ausencia_Medico (id_medico, fecha_ausencia, motivo) VALUES ?';
+    const sqlQuery = 'INSERT INTO ausencia_medico (id_medico, fecha_ausencia, motivo) VALUES ?';
     const [resultado] = await connection.query(sqlQuery, [valuesAInsertar]);
 
     await connection.commit();
