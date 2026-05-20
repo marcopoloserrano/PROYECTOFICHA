@@ -26,9 +26,9 @@ async function migrateAll() {
   let localConn, cloudConn;
 
   const tables = [
-    'Rol', 'Cobertura', 'Especialidad', 'Medico', 'Paciente', 
-    'Medico_Especialidad', 'Horario', 'Ausencia_Medico', 'Usuario', 
-    'Ficha', 'Pago', 'Historial_Clinico', 'Bloqueo_Temporal'
+    'rol', 'cobertura', 'especialidad', 'medico', 'paciente', 
+    'medico_especialidad', 'horario', 'ausencia_medico', 'usuario', 
+    'ficha', 'pago', 'historial_clinico', 'bloqueo_temporal'
   ];
 
   try {
@@ -41,7 +41,8 @@ async function migrateAll() {
     for (const table of tables) {
       console.log(`📦 Migrando tabla: ${table}...`);
       
-      // 1. Leer datos de local
+      // 1. Leer datos de local (usamos el nombre de la tabla tal cual)
+      // Nota: Si en local son PascalCase, MySQL en Windows los encontrará igual.
       const [rows] = await localConn.query(`SELECT * FROM ${table}`);
       
       if (rows.length === 0) {
@@ -49,16 +50,30 @@ async function migrateAll() {
         continue;
       }
 
-      // 2. Insertar en nube (usando INSERT IGNORE para evitar duplicados)
+      // 2. Insertar en nube (usando INSERT IGNORE para evitar duplicados de PK)
       const columnNames = Object.keys(rows[0]).join(', ');
       const placeholders = Object.keys(rows[0]).map(() => '?').join(', ');
       const sql = `INSERT IGNORE INTO ${table} (${columnNames}) VALUES (${placeholders})`;
 
+      let migrados = 0;
+      let omitidos = 0;
+
       for (const row of rows) {
-        await cloudConn.query(sql, Object.values(row));
+        try {
+            await cloudConn.query(sql, Object.values(row));
+            migrados++;
+        } catch (e) {
+            // Error 1644 es el de los TRIGGERS (SIGNAL SQLSTATE)
+            if (e.errno === 1644 || e.code === 'ER_SIGNAL_EXCEPTION') {
+                omitidos++;
+            } else {
+                console.error(`   ❌ Error en fila de ${table}:`, e.message);
+                throw e; 
+            }
+        }
       }
 
-      console.log(`   ✅ ${rows.length} registros migrados.`);
+      console.log(`   ✅ ${migrados} registros migrados${omitidos > 0 ? ` (${omitidos} omitidos por reglas de negocio/triggers)` : ''}.`);
     }
 
     console.log('\n🎉 ¡MIGRACIÓN TOTAL COMPLETADA CON ÉXITO! 🎉');
