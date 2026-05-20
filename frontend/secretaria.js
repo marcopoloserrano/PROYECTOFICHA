@@ -1,4 +1,4 @@
-const API_URL = '/api';
+import { API_URL } from './config.js';
 
 document.querySelector('#secretaria-app').innerHTML = `
   <div class="glass-card" style="border-top: 5px solid #0ea5e9; max-width: 1100px; margin: 0 auto;">

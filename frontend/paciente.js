@@ -1,9 +1,10 @@
+import { API_URL } from './config.js';
 const userAuth = JSON.parse(localStorage.getItem('userAuth') || 'null');
 if (!userAuth || userAuth.rol !== 'paciente') {
     window.location.href = '/login.html';
 }
 
-const API_URL = '/api';
+// API_URL imported above
 let medicosDisponibles = [];
 let todosLosHorarios = [];
 let horarioSeleccionadoCache = null;

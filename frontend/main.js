@@ -1,3 +1,4 @@
+import { API_URL } from './config.js';
 const userAuth = JSON.parse(localStorage.getItem('userAuth') || 'null');
 if (!userAuth || userAuth.rol === 'paciente') {
     window.location.href = '/login.html';
@@ -5,7 +6,7 @@ if (!userAuth || userAuth.rol === 'paciente') {
 document.body.classList.add('admin-layout');
 const isSecretaria = userAuth.rol === 'secretaria';
 
-const API_URL = '/api';
+// API_URL imported above
 let pacientesGlobales = [];
 let medicosGlobales = [];
 let especialidadesGlobales = [];

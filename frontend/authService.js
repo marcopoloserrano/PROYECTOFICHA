@@ -1,4 +1,4 @@
-const API_URL = '/api';
+import { API_URL } from './config.js';
 
 export const authService = {
     /**
