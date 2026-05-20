@@ -432,8 +432,8 @@ async function intentarBloquearSlot(hora, btn) {
         } else {
             msg.textContent = '⚠️ ' + data.message;
             msg.className = 'message error';
-            // Refrescar disponibilidad
-            consultarDisponibilidad(inputFecha.value, inputHorarioId.value);
+            // Refrescar disponibilidad de forma silenciosa para no borrar el mensaje de error
+            refrescarSlots(inputFecha.value, inputHorarioId.value, true);
         }
     } catch (e) {
         console.error("Error al bloquear", e);
@@ -554,7 +554,12 @@ async function refrescarSlots(fechaValue, idHorario, silencioso = false) {
             document.getElementById('cupos-number').textContent = payload.disponibles > 0 ? `${payload.disponibles} espacios libres` : 'Sin espacios disponibles';
             if(!hayDisponibles) slotsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#991b1b;">Lo sentimos, este horario está lleno.</p>';
         }
-    } catch(error) { console.error("Polling Error", error); }
+    } catch(error) { 
+        console.error("Polling Error", error); 
+        if (slotsGrid.innerHTML.includes('loader')) {
+            slotsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#991b1b;">⚠️ Error cargando disponibilidad. Por favor intenta de nuevo.</p>';
+        }
+    }
 }
 
 formFicha.addEventListener('submit', async (e) => {
