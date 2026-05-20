@@ -1,6 +1,44 @@
 import { authService } from './authService.js';
 
 // Elementos de la UI
+const dobDay = document.getElementById('dob_day');
+const dobMonth = document.getElementById('dob_month');
+const dobYear = document.getElementById('dob_year');
+
+function initDOBSelectors() {
+    if (!dobDay || !dobMonth || !dobYear) return;
+
+    // Poblar Días
+    for (let i = 1; i <= 31; i++) {
+        const opt = document.createElement('option');
+        opt.value = i.toString().padStart(2, '0');
+        opt.textContent = i;
+        dobDay.appendChild(opt);
+    }
+
+    // Poblar Meses
+    const meses = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    meses.forEach((mes, idx) => {
+        const opt = document.createElement('option');
+        opt.value = (idx + 1).toString().padStart(2, '0');
+        opt.textContent = mes;
+        dobMonth.appendChild(opt);
+    });
+
+    // Poblar Años (Desde 1920 hasta hoy)
+    const currentYear = new Date().getFullYear();
+    for (let i = currentYear; i >= 1920; i--) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = i;
+        dobYear.appendChild(opt);
+    }
+}
+
+initDOBSelectors();
 const btnSwitch = document.getElementById('btn-switch-staff');
 const viewPaciente = document.getElementById('view-paciente');
 const viewStaff = document.getElementById('view-staff');
@@ -39,7 +77,19 @@ formPaciente.addEventListener('submit', async (e) => {
     msgPaciente.textContent = 'Verificando...';
     
     const ci = document.getElementById('ci_paciente').value;
-    const fechaNac = document.getElementById('fecha_nac_paciente').value;
+    
+    // Reconstruir la fecha YYYY-MM-DD
+    const day = dobDay.value;
+    const month = dobMonth.value;
+    const year = dobYear.value;
+
+    if (!day || !month || !year) {
+        msgPaciente.textContent = '❌ Por favor completa tu fecha de nacimiento';
+        msgPaciente.className = 'message error';
+        return;
+    }
+
+    const fechaNac = `${year}-${month}-${day}`;
 
     try {
         const result = await authService.loginPaciente(ci, fechaNac);

@@ -30,7 +30,17 @@
             
             <div class="form-group" style="margin-bottom: 20px;">
                 <label style="font-weight: 700; color: #334155;">Fecha de Nacimiento</label>
-                <input type="date" id="fecha_nac_paciente" class="form-input" style="width: 100%; border: 1px solid #cbd5e1; padding: 10px; border-radius: 8px;" required>
+                <div class="row" style="gap: 8px;">
+                    <select id="dob_day" class="form-input" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;" required>
+                        <option value="" disabled selected>Día</option>
+                    </select>
+                    <select id="dob_month" class="form-input" style="flex: 2; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;" required>
+                        <option value="" disabled selected>Mes</option>
+                    </select>
+                    <select id="dob_year" class="form-input" style="flex: 1.5; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;" required>
+                        <option value="" disabled selected>Año</option>
+                    </select>
+                </div>
             </div>
             
             <button type="submit" class="action-btn" style="width: 100%; font-size: 1.1rem; padding: 12px; background: var(--primary-color); color: white; border: none; border-radius: 8px; cursor: pointer;">
