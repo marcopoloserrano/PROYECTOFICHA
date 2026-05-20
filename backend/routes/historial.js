@@ -5,7 +5,7 @@ const db = require('../db');
 // Obtener todo el historial
 router.get('/', async (req, res) => {
   try {
-    const [historial] = await db.query('SELECT * FROM Historial_Clinico');
+    const [historial] = await db.query('SELECT * FROM historial_clinico');
     res.json(historial);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener historial', error: error.message });

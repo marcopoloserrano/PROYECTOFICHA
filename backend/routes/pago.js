@@ -5,7 +5,7 @@ const db = require('../db');
 // Obtener pagos
 router.get('/', async (req, res) => {
   try {
-    const [pagos] = await db.query('SELECT * FROM Pago');
+    const [pagos] = await db.query('SELECT * FROM pago');
     res.json(pagos);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener pagos', error: error.message });

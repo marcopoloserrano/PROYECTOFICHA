@@ -12,27 +12,25 @@ router.post('/reservar', async (req, res) => {
 
     try {
         // 1. Limpiar bloqueos expirados primero
-        await db.query('DELETE FROM Bloqueo_Temporal WHERE expira_en < CURRENT_TIMESTAMP');
+        await db.query('DELETE FROM bloqueo_temporal WHERE expira_en < CURRENT_TIMESTAMP');
 
         // 2. Verificar si ya existe un bloqueo activo o una ficha confirmada
-        const [existente] = await db.query(
-            'SELECT id_bloqueo, id_paciente FROM Bloqueo_Temporal WHERE id_medico = ? AND fecha = ? AND hora = ?',
+        const [bloqueoActual] = await db.query(
+            'SELECT id_bloqueo, id_paciente FROM bloqueo_temporal WHERE id_medico = ? AND fecha = ? AND hora = ?',
             [id_medico, fecha, hora]
         );
 
-        if (existente.length > 0) {
-            if (existente[0].id_paciente == id_paciente) {
-                return res.json({ message: 'Ya tienes este bloqueo', yaEsTuyo: true });
-            }
-            return res.status(409).json({ message: 'Este horario está siendo procesado por otro paciente' });
+        if (bloqueoActual.length > 0) {
+            return res.status(409).json({ message: 'Este horario ya está siendo reservado por otro usuario.' });
         }
 
-        const [ficha] = await db.query(
-            'SELECT id_ficha FROM Ficha WHERE id_medico = ? AND fecha = ? AND hora = ? AND estado != "Cancelado"',
+        // 2. Verificar si ya existe una FICHA confirmada
+        const [fichaExistente] = await db.query(
+            'SELECT id_ficha FROM ficha WHERE id_medico = ? AND fecha = ? AND hora = ? AND estado != "Cancelado"',
             [id_medico, fecha, hora]
         );
 
-        if (ficha.length > 0) {
+        if (fichaExistente.length > 0) {
             return res.status(409).json({ message: 'Este horario ya ha sido reservado definitivamente' });
         }
 

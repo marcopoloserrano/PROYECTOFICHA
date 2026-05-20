@@ -42,7 +42,7 @@ router.get('/disponibilidad', async (req, res) => {
 
       // a) Verificar horario laboral en el día seleccionado
       const [horarios] = await db.query(
-        'SELECT id_horario, hora_inicio, hora_fin, limite_fichas FROM Horario WHERE id_medico = ? AND dia_semana = ?', 
+        'SELECT id_horario, hora_inicio, hora_fin, limite_fichas FROM horario WHERE id_medico = ? AND dia_semana = ?', 
         [p_medico, dia_semana]
       );
 
@@ -56,7 +56,7 @@ router.get('/disponibilidad', async (req, res) => {
 
       // b) Verificar ausencias (vacaciones/permisos)
       const [ausenciaData] = await db.query(
-        'SELECT motivo FROM Ausencia_Medico WHERE id_medico = ? AND fecha_ausencia = ?', 
+        'SELECT motivo FROM ausencia_medico WHERE id_medico = ? AND fecha_ausencia = ?', 
         [p_medico, fecha]
       );
 

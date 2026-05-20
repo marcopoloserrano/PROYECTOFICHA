@@ -5,7 +5,7 @@ const db = require('../db');
 // Obtener todas las especialidades
 router.get('/', async (req, res) => {
   try {
-    const [especialidades] = await db.query('SELECT * FROM Especialidad');
+    const [especialidades] = await db.query('SELECT * FROM especialidad');
     res.json(especialidades);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener especialidades', error: error.message });

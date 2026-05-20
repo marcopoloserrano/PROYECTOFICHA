@@ -4,7 +4,7 @@ const db = require('../db');
 
 router.get('/', async (req, res) => {
   try {
-    const [horarios] = await db.query('SELECT * FROM Horario');
+    const [horarios] = await db.query('SELECT * FROM horario');
     res.json(horarios);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener horarios', error: error.message });

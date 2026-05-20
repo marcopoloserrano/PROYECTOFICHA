@@ -5,7 +5,7 @@ const db = require('../db');
 // Ruta GET provisional para listar pacientes (opcional para pruebas)
 router.get('/', async (req, res) => {
   try {
-    const [pacientes] = await db.query('SELECT * FROM Paciente');
+    const [pacientes] = await db.query('SELECT * FROM paciente');
     res.json(pacientes);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener pacientes', error: error.message });
