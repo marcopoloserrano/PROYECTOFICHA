@@ -291,11 +291,6 @@ document.querySelector('#app').innerHTML = `
       <div id="status-message" class="message"></div>
     </div>
   </div>
-  
-    ` : ''}
-       <div id="status-message" class="message"></div>
-     </div>
-   </div>
 `;
 
 // CAPTURAR ELEMENTOS DESPUÉS DE INYECTAR EL HTML
