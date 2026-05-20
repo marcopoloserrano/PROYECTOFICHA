@@ -840,7 +840,7 @@ document.getElementById('ficha-form').addEventListener('submit', async (e) => {
 /* ========================================================
    LÓGICA: GESTIÓN INTERACTIVA (VER, EDITAR, ELIMINAR)
 ======================================================== */
-const gestionSelect = document.getElementById('gestion-tabla-select');
+// Elementos se capturan dinámicamente en las funciones
 let dbTablesCache = {};
 let currentEditTable = null;
 let currentEditPk = null;
@@ -858,7 +858,9 @@ async function cargarDatosGestion() {
 }
 
 function renderTablaGestion() {
-    const tableName = gestionSelect.value;
+    const gSelect = document.getElementById('gestion-tabla-select');
+    if (!gSelect) return;
+    const tableName = gSelect.value;
     const tableData = dbTablesCache[tableName];
     if(!tableData) return;
 
