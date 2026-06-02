@@ -60,8 +60,28 @@ document.querySelector('#patient-app').innerHTML = `
 
     <!-- SECCIÓN: MIS CITAS RECIENTES -->
     <div id="historial-citas-box" style="background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin-bottom: 1.5rem; display:none;">
-        <h3 style="margin-top:0; color:var(--primary-color); font-size:1rem; border-bottom: 1px solid #f1f5f9; padding-bottom:10px;">📋 Mis Citas Registradas</h3>
-        <div id="lista-fichas-paciente" style="max-height: 200px; overflow-y:auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom:10px;">
+            <h3 style="margin:0; color:var(--primary-color); font-size:1rem;">📋 Mis Citas Registradas</h3>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="imprimirHistorial()" class="action-btn" style="width:auto; padding:5px 10px; font-size:0.7rem; background:#64748b;">🖨️ Imprimir</button>
+                <button onclick="compartirHistorial()" class="action-btn" style="width:auto; padding:5px 10px; font-size:0.7rem; background:#25d366;">📲 Compartir</button>
+            </div>
+        </div>
+        
+        <!-- Filtros de Historial -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: flex-end; background: #f8fafc; padding: 10px; border-radius: 8px;">
+            <div style="flex: 1;">
+                <label style="font-size: 0.7rem; color: #64748b; font-weight: bold; display: block; margin-bottom: 3px;">Desde:</label>
+                <input type="date" id="filtro-fecha-inicio" style="width: 100%; padding: 5px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem;">
+            </div>
+            <div style="flex: 1;">
+                <label style="font-size: 0.7rem; color: #64748b; font-weight: bold; display: block; margin-bottom: 3px;">Hasta:</label>
+                <input type="date" id="filtro-fecha-fin" style="width: 100%; padding: 5px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.8rem;">
+            </div>
+            <button onclick="cargarHistorialPaciente()" class="action-btn" style="width:auto; height:32px; padding:0 10px; font-size:0.8rem;">🔍</button>
+        </div>
+
+        <div id="lista-fichas-paciente" style="max-height: 250px; overflow-y:auto;">
             <p style="font-size:0.8rem; color:#64748b;">Cargando historial...</p>
         </div>
     </div>
@@ -151,8 +171,12 @@ document.querySelector('#patient-app').innerHTML = `
            <span style="font-size: 0.75rem; color: #065f46;">Por favor, llega 30 minutos antes de tu cita.</span>
         </div>
       </div>
-      <div class="ticket-footer">
-        <button type="button" class="btn-close-modal" id="btn-cerrar-modal">Entendido, Cerrar</button>
+      <div class="ticket-footer" style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-cancel" style="background:#64748b; flex:1;" onclick="window.print()">🖨️ Imprimir</button>
+            <button type="button" class="btn-accept" style="background:#25d366; flex:1;" id="btn-compartir-ficha">📲 Compartir</button>
+        </div>
+        <button type="button" class="btn-close-modal" id="btn-cerrar-modal" style="width:100%;">Entendido, Cerrar</button>
       </div>
     </div>
   </div>
@@ -179,6 +203,7 @@ const btnCerrarModal = document.getElementById('btn-cerrar-modal');
 const modalPreConfirm = document.getElementById('modal-pre-confirm');
 const btnConfirmarFinal = document.getElementById('btn-confirmar-final');
 const btnCancelModal = document.getElementById('btn-cancel-modal');
+const btnCompartirFicha = document.getElementById('btn-compartir-ficha');
 
 document.getElementById('btn-logout').addEventListener('click', () => {
     localStorage.removeItem('userAuth');
@@ -261,23 +286,35 @@ async function inicializarPortal() {
 }
 async function cargarHistorialPaciente() {
     try {
-        const res = await fetch(`${API_URL}/fichas/paciente/${userAuth.id}`);
+        const fechaInicio = document.getElementById('filtro-fecha-inicio')?.value || '';
+        const fechaFin = document.getElementById('filtro-fecha-fin')?.value || '';
+        
+        let url = `${API_URL}/fichas/paciente/${userAuth.id}`;
+        if (fechaInicio || fechaFin) {
+            url += `?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
+        }
+
+        const res = await fetch(url);
         const fichas = await res.json();
         const contenedor = document.getElementById('lista-fichas-paciente');
         const box = document.getElementById('historial-citas-box');
         
-        if (fichas.length > 0) {
+        if (fichas.length > 0 || (fechaInicio || fechaFin)) {
             box.style.display = 'block';
             contenedor.innerHTML = '';
+            
+            if (fichas.length === 0) {
+                contenedor.innerHTML = '<p style="font-size:0.8rem; color:#64748b; text-align:center; padding:10px;">No se encontraron citas en este rango.</p>';
+                return;
+            }
+
             fichas.forEach(f => {
-                const colorEstado = f.estado === 'Vigente' ? '#10b981' : '#64748b';
                 contenedor.innerHTML += `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding: 10px; border-bottom: 1px solid #f1f5f9; font-size:0.85rem;">
                         <div>
-                            <b>${f.especialidad_nombre}</b> - Dr. ${f.medico_nombre}<br>
-                            <span style="color:#64748b;">${formatearFecha(f.fecha.split('T')[0])} a las ${f.hora.substring(0,5)}</span>
+                            <b style="color:var(--primary-color)">${f.especialidad_nombre}</b> - Dr. ${f.medico_nombre}<br>
+                            <span style="color:#64748b;">📅 ${formatearFecha(f.fecha.split('T')[0])} a las 🕒 ${f.hora.substring(0,5)}</span>
                         </div>
-                        <span style="background:${colorEstado}; color:white; padding:3px 8px; border-radius:10px; font-size:0.7rem; font-weight:bold;">${f.estado}</span>
                     </div>
                 `;
             });
@@ -288,6 +325,51 @@ async function cargarHistorialPaciente() {
         console.error("Error historial", e);
     }
 }
+
+window.imprimirHistorial = function() {
+    const listContent = document.getElementById('lista-fichas-paciente').innerHTML;
+    const printWindow = window.open('', '', 'height=600,width=800');
+    printWindow.document.write('<html><head><title>Mis Citas - Hospital</title>');
+    printWindow.document.write('<style>body{font-family:sans-serif; padding:20px;} h1{color:#059669;} .cita{border-bottom:1px solid #eee; padding:10px 0;}</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write('<h1>Historial de Citas: ' + userAuth.nombre + ' ' + userAuth.apellido + '</h1>');
+    printWindow.document.write('<div>' + listContent + '</div>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+};
+
+window.compartirHistorial = async function() {
+    const res = await fetch(`${API_URL}/fichas/paciente/${userAuth.id}`);
+    const fichas = await res.json();
+    if (fichas.length === 0) return alert("No tienes citas para compartir.");
+
+    let texto = `*Mis Citas - Hospital*\n\n`;
+    fichas.slice(0, 5).forEach(f => {
+        texto += `📍 *${f.especialidad_nombre}*\n👨‍⚕️ Dr. ${f.medico_nombre}\n📅 ${formatearFecha(f.fecha.split('T')[0])} - ${f.hora.substring(0,5)}\n\n`;
+    });
+
+    if (navigator.share) {
+        navigator.share({ title: 'Mis Citas Médicas', text: texto });
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`);
+    }
+};
+
+window.compartirFichaUnica = function() {
+    const esp = document.getElementById('res-especialidad').textContent;
+    const med = document.getElementById('res-medico').textContent;
+    const fec = document.getElementById('res-fecha').textContent;
+    const hor = document.getElementById('res-hora').textContent;
+    
+    const texto = `*Confirmación de Cita Médica*\n\n🏥 *Hospital*\n📍 *Especialidad:* ${esp}\n👨‍⚕️ *Médico:* ${med}\n📅 *Fecha:* ${fec}\n🕒 *Hora:* ${hor}\n\n_Por favor, llega 30 minutos antes de tu cita._`;
+    
+    if (navigator.share) {
+        navigator.share({ title: 'Confirmación de Cita', text: texto });
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`);
+    }
+};
 
 inicializarPortal();
 
@@ -426,10 +508,6 @@ function generarIntervalos(inicioStr, finStr) {
 async function intentarBloquearSlot(hora, btn) {
     // Si ya es nuestra selección actual, deseleccionamos (liberamos)
     if (hora === horaSeleccionadaFinal) {
-        await liberarBloqueo();
-        btn.classList.remove('selected');
-        btnSubmit.disabled = true;
-        btnSubmit.textContent = 'Completa los pasos anteriores';
         msg.textContent = 'Horario deseleccionado y liberado.';
         msg.className = 'message';
         // Refrescar para que otros vean que está libre
@@ -614,8 +692,6 @@ btnCancelModal.onclick = async () => {
     // Deseleccionar UI
     document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
     horaSeleccionadaFinal = null;
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Completa los pasos anteriores';
     msg.textContent = 'Selección cancelada.';
     msg.className = 'message';
 };
@@ -671,4 +747,9 @@ btnCerrarModal.onclick = () => {
     stepHorario.style.display = 'none';
     document.querySelectorAll('.especialidad-btn').forEach(b => b.classList.remove('active'));
     selectMedico.innerHTML = '<option value="">Primero elige una especialidad</option>'; selectMedico.disabled = true;
+};
+
+// Evento para compartir la ficha única
+btnCompartirFicha.onclick = () => {
+    window.compartirFichaUnica();
 };

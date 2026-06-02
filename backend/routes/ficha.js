@@ -105,8 +105,9 @@ router.patch('/confirmar/:id_ficha', async (req, res) => {
 // Obtener historial de fichas de un paciente específico
 router.get('/paciente/:id_paciente', async (req, res) => {
     const { id_paciente } = req.params;
+    const { fecha_inicio, fecha_fin } = req.query;
     try {
-        const query = `
+        let query = `
             SELECT f.id_ficha, f.fecha, f.hora, f.estado,
                    m.nombre AS medico_nombre, m.apellido AS medico_apellido,
                    e.nombre AS especialidad_nombre
@@ -115,9 +116,20 @@ router.get('/paciente/:id_paciente', async (req, res) => {
             JOIN medico_especialidad me ON m.id_medico = me.id_medico
             JOIN especialidad e ON me.id_especialidad = e.id_especialidad
             WHERE f.id_paciente = ?
-            ORDER BY f.fecha DESC, f.hora DESC
         `;
-        const [fichas] = await db.query(query, [id_paciente]);
+        const params = [id_paciente];
+
+        if (fecha_inicio) {
+            query += ' AND f.fecha >= ?';
+            params.push(fecha_inicio);
+        }
+        if (fecha_fin) {
+            query += ' AND f.fecha <= ?';
+            params.push(fecha_fin);
+        }
+
+        query += ' ORDER BY f.fecha DESC, f.hora DESC';
+        const [fichas] = await db.query(query, params);
         res.json(fichas);
     } catch (error) {
         res.status(500).json({ message: 'Error al obtener historial de fichas', error: error.message });
@@ -268,7 +280,7 @@ router.post('/crear', async (req, res) => {
 
 // NUEVO: Endpoint para Reportes (Filtros: Fecha, Especialidad, Médico, Orden)
 router.get('/reporte', async (req, res) => {
-    const { fecha_inicio, fecha_fin, id_especialidad, id_medico, orden } = req.query;
+    const { fecha_inicio, fecha_fin, id_especialidad, id_medico, id_paciente, orden } = req.query;
     
     try {
         let sql = `
@@ -300,6 +312,10 @@ router.get('/reporte', async (req, res) => {
         if (id_medico) {
             sql += ' AND m.id_medico = ?';
             params.push(id_medico);
+        }
+        if (id_paciente) {
+            sql += ' AND f.id_paciente = ?';
+            params.push(id_paciente);
         }
 
         // Orden de la consulta

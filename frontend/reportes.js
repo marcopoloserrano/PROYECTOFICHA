@@ -7,6 +7,7 @@ const btnShare = document.getElementById('btn-share');
 const filtroInicio = document.getElementById('filtro-inicio');
 const filtroFin = document.getElementById('filtro-fin');
 const filtroEspecialidad = document.getElementById('filtro-especialidad');
+const filtroPaciente = document.getElementById('filtro-paciente');
 const filtroOrden = document.getElementById('filtro-orden');
 const msg = document.getElementById('report-message');
 
@@ -27,6 +28,20 @@ async function inicializar() {
         console.error("Error cargando especialidades", e);
     }
 
+    // Cargar pacientes para el buscador
+    try {
+        const resP = await fetch(`${API_URL}/pacientes`);
+        const pacientes = await resP.json();
+        pacientes.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id_paciente;
+            opt.textContent = `${p.apellido}, ${p.nombre}`;
+            filtroPaciente.appendChild(opt);
+        });
+    } catch (e) {
+        console.error("Error cargando pacientes", e);
+    }
+
     // Fecha por defecto: Hoy
     const hoy = new Date().toISOString().split('T')[0];
     filtroInicio.value = hoy;
@@ -42,6 +57,7 @@ async function cargarReporte() {
         fecha_inicio: filtroInicio.value,
         fecha_fin: filtroFin.value,
         id_especialidad: filtroEspecialidad.value,
+        id_paciente: filtroPaciente.value,
         orden: filtroOrden.value
     });
 
