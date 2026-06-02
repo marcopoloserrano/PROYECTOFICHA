@@ -3,7 +3,10 @@ import { API_URL } from './config.js';
 document.querySelector('#secretaria-app').innerHTML = `
   <div class="glass-card" style="border-top: 5px solid #0ea5e9; max-width: 1100px; margin: 0 auto;">
     <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-      <a href="/index.html" style="color:#64748b; font-size:0.9rem; text-decoration:none;">⬅ Volver al Inicio</a>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <a href="/index.html" style="color:#64748b; font-size:0.9rem; text-decoration:none;">⬅ Volver al Inicio</a>
+        <a href="/reportes.html" style="background:#6366f1; color:white; padding:6px 12px; border-radius:8px; font-size:0.8rem; text-decoration:none; font-weight:bold;">📊 Ver Reportes y Estadísticas</a>
+      </div>
       <h1 style="margin:0; font-size:1.5rem;">📋 Confirmación de Asistencia</h1>
     </div>
     

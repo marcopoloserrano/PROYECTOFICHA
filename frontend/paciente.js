@@ -108,10 +108,30 @@ document.querySelector('#patient-app').innerHTML = `
         </div>
       </div>
 
-      <button type="submit" class="action-btn" id="btn-submit" disabled>Completa los pasos anteriores</button>
+      <!-- Botón de submit eliminado para flujo directo -->
     </form>
 
     <div id="patient-message" class="message"></div>
+  </div>
+
+  <!-- MODAL PRE-CONFIRMACIÓN -->
+  <div id="modal-pre-confirm" class="modal-overlay">
+    <div class="modal-content" style="border-color: #f59e0b;">
+      <div class="ticket-header">
+        <h2 style="color: #d97706;">⚠️ Confirmar Horario</h2>
+        <p style="font-size: 0.8rem; color: #92400e; font-weight: bold; margin-top: 5px;">Revisa los detalles antes de agendar</p>
+      </div>
+      <div class="ticket-body" style="background: #fffbeb;">
+        <div class="ticket-row"><span>Especialidad:</span> <span id="pre-especialidad">-</span></div>
+        <div class="ticket-row"><span>Médico:</span> <span id="pre-medico">-</span></div>
+        <div class="ticket-row"><span>Fecha:</span> <span id="pre-fecha">-</span></div>
+        <div class="ticket-row"><span>Hora:</span> <span id="pre-hora">-</span></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="btn-cancel-modal">Cancelar</button>
+        <button type="button" class="btn-accept" id="btn-confirmar-final">Confirmar Ficha</button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL RECIBO -->
@@ -151,10 +171,14 @@ const slotsGrid = document.getElementById('slots-grid-container');
 const inputFecha = document.getElementById('fecha');
 const cardDisponibilidad = document.getElementById('availability-card');
 const formFicha = document.getElementById('patient-ficha-form');
-const btnSubmit = document.getElementById('btn-submit');
 const msg = document.getElementById('patient-message');
 const modalOverlay = document.getElementById('modal-confirm');
 const btnCerrarModal = document.getElementById('btn-cerrar-modal');
+
+// Nuevos elementos para confirmación
+const modalPreConfirm = document.getElementById('modal-pre-confirm');
+const btnConfirmarFinal = document.getElementById('btn-confirmar-final');
+const btnCancelModal = document.getElementById('btn-cancel-modal');
 
 document.getElementById('btn-logout').addEventListener('click', () => {
     localStorage.removeItem('userAuth');
@@ -183,14 +207,12 @@ async function inicializarPortal() {
         const resVerif = await fetch(`${API_URL}/fichas/verificar-semana/${userAuth.id}`);
         if (resVerif.ok) {
             const dataVerif = await resVerif.json();
-            if (dataVerif.tieneFicha) {
-                // Mostrar mensaje general
-                msg.innerHTML = `⚠️ <b>Reserva Existente:</b> ${dataVerif.message}<br>Solo se permite una cita por semana.`;
-                msg.className = 'message error';
-                btnSubmit.disabled = true;
-                btnSubmit.textContent = 'Ya tienes una cita esta semana';
-                
-                // Si es SUS (id_cobertura === 1), mostrar mensaje especial debajo de datos
+                if (dataVerif.tieneFicha) {
+                    // Mostrar mensaje general
+                    msg.innerHTML = `⚠️ <b>Reserva Existente:</b> ${dataVerif.message}<br>Solo se permite una cita por semana.`;
+                    msg.className = 'message error';
+                    
+                    // Si es SUS (id_cobertura === 1), mostrar mensaje especial debajo de datos
                 if (userAuth.id_cobertura == 1) {
                     document.getElementById('sus-warning-box').style.display = 'block';
                 }
@@ -309,8 +331,6 @@ function resetValidation() {
     inputHorarioId.value = '';
     inputFecha.value = '';
     horaSeleccionadaFinal = null;
-    btnSubmit.disabled = true;
-    btnSubmit.textContent = 'Completa los pasos anteriores';
     cardDisponibilidad.style.display = 'none';
     stepFecha.style.display = 'none';
     msg.className = 'message';
@@ -437,8 +457,9 @@ async function intentarBloquearSlot(hora, btn) {
             document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
             horaSeleccionadaFinal = hora;
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = `Confirmar Cita a las ${hora}`;
+            
+            // Trigger directo del modal de confirmación
+            lanzarModalConfirmacion();
             
             msg.textContent = '✅ Horario seleccionado.';
             msg.className = 'message success';
@@ -575,13 +596,37 @@ async function refrescarSlots(fechaValue, idHorario, silencioso = false) {
     }
 }
 
-formFicha.addEventListener('submit', async (e) => {
-  e.preventDefault();
+function lanzarModalConfirmacion() {
+    if (!horaSeleccionadaFinal) return;
+    
+    document.getElementById('pre-especialidad').textContent = document.querySelector('.especialidad-btn.active').textContent;
+    document.getElementById('pre-medico').textContent = selectMedico.options[selectMedico.selectedIndex].text;
+    document.getElementById('pre-fecha').textContent = formatearFecha(inputFecha.value);
+    document.getElementById('pre-hora').textContent = horaSeleccionadaFinal + " hrs";
+    
+    modalPreConfirm.style.display = 'flex';
+}
+
+btnCancelModal.onclick = async () => {
+    await liberarBloqueo(); // Liberamos el horario si cancela
+    modalPreConfirm.style.display = 'none';
+    
+    // Deseleccionar UI
+    document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+    horaSeleccionadaFinal = null;
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Completa los pasos anteriores';
+    msg.textContent = 'Selección cancelada.';
+    msg.className = 'message';
+};
+
+btnConfirmarFinal.onclick = async () => {
   msg.className = 'message';
-  btnSubmit.disabled = true;
+  btnConfirmarFinal.disabled = true;
+  btnConfirmarFinal.textContent = 'Procesando...';
 
   const data = {
-    id_paciente: userAuth.id, // Obtenido del session
+    id_paciente: userAuth.id,
     id_medico: parseInt(selectMedico.value),
     id_horario: parseInt(inputHorarioId.value),
     fecha: inputFecha.value,
@@ -590,22 +635,34 @@ formFicha.addEventListener('submit', async (e) => {
   };
 
   try {
-    const response = await fetch(API_URL + '/fichas/crear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    const response = await fetch(API_URL + '/fichas/crear', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(data) 
+    });
+    
     if (response.ok) {
+      modalPreConfirm.style.display = 'none';
       if (bloqueoInterval) clearInterval(bloqueoInterval);
       document.getElementById('res-paciente').textContent = `${userAuth.nombre} ${userAuth.apellido}`;
-      document.getElementById('res-especialidad').textContent = document.querySelector('.especialidad-btn.active').textContent;
-      document.getElementById('res-medico').textContent = selectMedico.options[selectMedico.selectedIndex].text;
-      document.getElementById('res-fecha').textContent = formatearFecha(data.fecha);
+      document.getElementById('res-especialidad').textContent = document.getElementById('pre-especialidad').textContent;
+      document.getElementById('res-medico').textContent = document.getElementById('pre-medico').textContent;
+      document.getElementById('res-fecha').textContent = document.getElementById('pre-fecha').textContent;
       document.getElementById('res-hora').textContent = data.hora + " hrs";
       modalOverlay.style.display = 'flex';
     } else {
       const errorData = await response.json();
       msg.textContent = '⚠️ ' + (errorData.message || 'Error al agendar la cita'); 
       msg.className = 'message error';
+      modalPreConfirm.style.display = 'none';
     }
-  } catch (error) {} finally { if (msg.className.includes('error')) btnSubmit.disabled = false; }
-});
+  } catch (error) {
+      console.error("Error al confirmar:", error);
+  } finally { 
+      btnConfirmarFinal.disabled = false;
+      btnConfirmarFinal.textContent = 'Confirmar Ficha';
+  }
+};
 
 btnCerrarModal.onclick = () => {
     modalOverlay.style.display = 'none';

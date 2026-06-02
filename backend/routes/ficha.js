@@ -266,4 +266,57 @@ router.post('/crear', async (req, res) => {
   }
 });
 
+// NUEVO: Endpoint para Reportes (Filtros: Fecha, Especialidad, Médico, Orden)
+router.get('/reporte', async (req, res) => {
+    const { fecha_inicio, fecha_fin, id_especialidad, id_medico, orden } = req.query;
+    
+    try {
+        let sql = `
+            SELECT f.id_ficha, f.fecha, f.hora, f.estado, 
+                   p.nombre AS paciente_nombre, p.apellido AS paciente_apellido, p.ci,
+                   m.nombre AS medico_nombre, m.apellido AS medico_apellido,
+                   e.nombre AS especialidad_nombre
+            FROM ficha f
+            JOIN paciente p ON f.id_paciente = p.id_paciente
+            JOIN medico m ON f.id_medico = m.id_medico
+            JOIN medico_especialidad me ON m.id_medico = me.id_medico
+            JOIN especialidad e ON me.id_especialidad = e.id_especialidad
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (fecha_inicio) {
+            sql += ' AND f.fecha >= ?';
+            params.push(fecha_inicio);
+        }
+        if (fecha_fin) {
+            sql += ' AND f.fecha <= ?';
+            params.push(fecha_fin);
+        }
+        if (id_especialidad) {
+            sql += ' AND e.id_especialidad = ?';
+            params.push(id_especialidad);
+        }
+        if (id_medico) {
+            sql += ' AND m.id_medico = ?';
+            params.push(id_medico);
+        }
+
+        // Orden de la consulta
+        if (orden === 'ALFA') {
+            sql += ' ORDER BY p.apellido ASC, p.nombre ASC';
+        } else if (orden === 'DESC') {
+            sql += ' ORDER BY f.fecha DESC, f.hora DESC';
+        } else {
+            sql += ' ORDER BY f.fecha ASC, f.hora ASC';
+        }
+
+        const [results] = await db.query(sql, params);
+        res.json(results);
+    } catch (error) {
+        console.error('Error en reporte:', error);
+        res.status(500).json({ message: 'Error al generar reporte', error: error.message });
+    }
+});
+
 module.exports = router;

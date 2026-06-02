@@ -28,6 +28,7 @@ let tabsHtml = `
   <button class="tab-btn" id="tab-paciente">👤 Gestionar Pacientes</button>
   <button class="tab-btn" id="tab-ausencia">🛑 Permisos</button>
   <button class="tab-btn" id="tab-asistencia">✅ Confirmar Asistencia</button>
+  <button class="tab-btn" id="tab-reporte">📊 Reportes y Estadísticas</button>
 `;
 
 if (!isSecretaria) {
@@ -288,6 +289,10 @@ document.querySelector('#app').innerHTML = `
         </div>
       ` : ''}
 
+      <div id="vista-reporte" style="display: none;">
+          <iframe src="/reportes.html" style="width:100%; height:80vh; border:none; border-radius:12px; background:white;"></iframe>
+      </div>
+
       <div id="status-message" class="message"></div>
     </div>
   </div>
@@ -326,7 +331,8 @@ const tabs = {
   ficha: { btn: document.getElementById('tab-ficha'), vista: document.getElementById('vista-ficha') },
   ausencia: { btn: document.getElementById('tab-ausencia'), vista: document.getElementById('vista-ausencia') },
   paciente: { btn: document.getElementById('tab-paciente'), vista: document.getElementById('vista-paciente') },
-  asistencia: { btn: document.getElementById('tab-asistencia'), vista: document.getElementById('vista-asistencia') }
+  asistencia: { btn: document.getElementById('tab-asistencia'), vista: document.getElementById('vista-asistencia') },
+  reporte: { btn: document.getElementById('tab-reporte'), vista: document.getElementById('vista-reporte') }
 };
 
 if (!isSecretaria) {

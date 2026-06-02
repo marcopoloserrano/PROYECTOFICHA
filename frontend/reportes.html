@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Hospitalarios</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos específicos para impresión */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .glass-card { box-shadow: none; border: none; width: 100%; max-width: 100%; }
+            table { font-size: 10pt; }
+        }
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            background: rgba(255,255,255,0.5);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+        .filter-item { flex: 1; min-width: 150px; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: white; }
+        .report-table th, .report-table td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        .report-table th { background: #f8fafc; color: #64748b; font-size: 0.8rem; text-transform: uppercase; }
+        .badge { padding: 4px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: bold; color: white; }
+    </style>
+</head>
+<body>
+    <div id="report-app" style="width: 100%; max-width: 1100px; margin: 0 auto; padding: 0 1.5rem;">
+        <div class="glass-card" style="border-top: 5px solid #6366f1;">
+            <div class="no-print" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <a href="/secretaria.html" style="color:#64748b; font-size:0.9rem; text-decoration:none;">⬅ Volver a Secretaría</a>
+                <h1 style="margin:0; font-size:1.5rem; color:#4f46e5;">📊 Centro de Reportes</h1>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filter-row no-print">
+                <div class="filter-item">
+                    <label>Desde:</label>
+                    <input type="date" id="filtro-inicio">
+                </div>
+                <div class="filter-item">
+                    <label>Hasta:</label>
+                    <input type="date" id="filtro-fin">
+                </div>
+                <div class="filter-item">
+                    <label>Especialidad:</label>
+                    <select id="filtro-especialidad">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>Ordenar por:</label>
+                    <select id="filtro-orden">
+                        <option value="FECHA">Fecha y Hora</option>
+                        <option value="ALFA">Alfabético (Paciente)</option>
+                        <option value="DESC">Más Recientes primero</option>
+                    </select>
+                </div>
+                <div class="filter-item" style="display:flex; align-items:flex-end; gap:8px;">
+                    <button id="btn-buscar" class="action-btn" style="margin:0; padding:10px; background:#6366f1;">🔍 Buscar</button>
+                    <button id="btn-share" class="action-btn" style="margin:0; padding:10px; background:#10b981; width:auto;" title="Compartir Reporte">
+                        <span style="font-size:1.2rem;">📱</span>
+                    </button>
+                    <button onclick="window.print()" class="action-btn" style="margin:0; padding:10px; background:#64748b; width:auto;" title="Imprimir">
+                        <span style="font-size:1.2rem;">🖨️</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- RESULTADOS -->
+            <div id="report-results">
+                <div style="margin-bottom:1rem; text-align:left;">
+                    <h3 id="report-title" style="margin:0; color:#1e293b;">Lista de Fichas Médicas</h3>
+                    <p id="report-summary" style="margin:5px 0 0 0; color:#64748b; font-size:0.9rem;">Cargando datos...</p>
+                </div>
+                
+                <div style="overflow-x:auto;">
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha/Hora</th>
+                                <th>Paciente</th>
+                                <th>CI / Cobertura</th>
+                                <th>Especialidad / Médico</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-body">
+                            <!-- Filas dinámicas -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="report-message" class="message"></div>
+        </div>
+    </div>
+    <script type="module" src="reportes.js"></script>
+</body>
+</html>
