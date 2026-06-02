@@ -94,7 +94,14 @@ document.querySelector('#app').innerHTML = `
     
       <!-- VISTA 0: LISTADO DE FICHAS DIARIAS (Modificado para agrupar por especialidad) -->
       <div id="vista-lista-fichas">
-        <h1>Monitor Diario de Citas</h1>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h1 style="margin:0;">Monitor Diario de Citas</h1>
+            <div style="display:flex; gap:8px;" class="no-print">
+                <button onclick="imprimirDashboard()" class="action-btn" style="width:auto; padding:8px 15px; background:#64748b; font-size:0.8rem;">🖨️ Imprimir</button>
+                <button onclick="compartirDashboard()" class="action-btn" style="width:auto; padding:8px 15px; background:#25d366; font-size:0.8rem;">📲 WhatsApp</button>
+                <button onclick="descargarDashboard()" class="action-btn" style="width:auto; padding:8px 15px; background:#0ea5e9; font-size:0.8rem;">📥 Excel/CSV</button>
+            </div>
+        </div>
         <p class="subtitle">Visualiza todas las fichas reservadas para el día de hoy o filtra por fecha.</p>
         
         <div class="form-group" style="max-width:250px;">
@@ -445,6 +452,67 @@ function renderFichasAgrupadas() {
     });
 }
 if(filtroFechaFicha) filtroFechaFicha.addEventListener('change', renderFichasAgrupadas);
+
+// FUNCIONES DE REPORTE DASHBOARD (Globales)
+window.imprimirDashboard = function() {
+    window.print();
+};
+
+window.compartirDashboard = function() {
+    const fecha = document.getElementById('filtro-fecha-ficha').value;
+    const cards = document.querySelectorAll('#tabla-fichas-agrupadas > div');
+    
+    if (cards.length === 0) return alert("No hay citas para compartir");
+
+    let texto = `*MONITOR DIARIO DE CITAS - ${fecha}*\n\n`;
+    
+    cards.forEach(card => {
+        const titulo = card.querySelector('div').firstChild.textContent.trim();
+        texto += `📍 *${titulo}*\n`;
+        const filas = card.querySelectorAll('tbody tr');
+        filas.forEach(f => {
+            const cells = f.querySelectorAll('td');
+            texto += `- ${cells[0].textContent}: ${cells[1].querySelector('b').textContent} (Dr. ${cells[2].textContent})\n`;
+        });
+        texto += `\n`;
+    });
+
+    if (navigator.share) {
+        navigator.share({ title: 'Monitor de Citas', text: texto });
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+    }
+};
+
+window.descargarDashboard = function() {
+    const fecha = document.getElementById('filtro-fecha-ficha').value;
+    const cards = document.querySelectorAll('#tabla-fichas-agrupadas > div');
+    
+    if (cards.length === 0) return alert("No hay datos para descargar");
+
+    let csv = "Especialidad;Hora;Paciente;CI;Medico;Estado\n";
+    
+    cards.forEach(card => {
+        const especialidad = card.querySelector('div').firstChild.textContent.trim();
+        const filas = card.querySelectorAll('tbody tr');
+        filas.forEach(f => {
+            const cells = f.querySelectorAll('td');
+            const paciente = cells[1].querySelector('b').textContent;
+            const ci = cells[1].querySelector('small').textContent.replace('CI: ', '');
+            const medico = cells[2].textContent.replace('Dr. ', '');
+            const estado = cells[3].textContent;
+            csv += `${especialidad};${cells[0].textContent};${paciente};${ci};${medico};${estado}\n`;
+        });
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `Citas_${fecha}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
 
 
 /* Cargar Selectores Base */
