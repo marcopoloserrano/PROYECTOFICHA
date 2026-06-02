@@ -323,6 +323,10 @@ router.get('/reporte', async (req, res) => {
             sql += ' ORDER BY p.apellido ASC, p.nombre ASC';
         } else if (orden === 'DESC') {
             sql += ' ORDER BY f.fecha DESC, f.hora DESC';
+        } else if (orden === 'ESP') {
+            sql += ' ORDER BY e.nombre ASC, f.fecha ASC';
+        } else if (orden === 'MED') {
+            sql += ' ORDER BY m.apellido ASC, m.nombre ASC';
         } else {
             sql += ' ORDER BY f.fecha ASC, f.hora ASC';
         }

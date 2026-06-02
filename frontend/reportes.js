@@ -4,6 +4,7 @@ const reportBody = document.getElementById('report-body');
 const reportSummary = document.getElementById('report-summary');
 const btnBuscar = document.getElementById('btn-buscar');
 const btnShare = document.getElementById('btn-share');
+const btnDownload = document.getElementById('btn-download');
 const filtroInicio = document.getElementById('filtro-inicio');
 const filtroFin = document.getElementById('filtro-fin');
 const filtroEspecialidad = document.getElementById('filtro-especialidad');
@@ -146,7 +147,31 @@ function abrirWhatsApp(texto) {
     window.open(url, '_blank');
 }
 
+// LÓGICA DE DESCARGA CSV
+function descargarReporte() {
+    if (currentData.length === 0) return alert("No hay datos para descargar");
+
+    let csv = "Fecha;Hora;Paciente;CI;Especialidad;Medico;Estado\n";
+    
+    currentData.forEach(f => {
+        const fecha = formatearFechaSimple(f.fecha);
+        const hora = f.hora.substring(0,5);
+        const paciente = `${f.paciente_apellido}, ${f.paciente_nombre}`;
+        const medico = `Dr. ${f.medico_apellido}`;
+        csv += `${fecha};${hora};${paciente};${f.ci};${f.especialidad_nombre};${medico};${f.estado}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `Reporte_Citas_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 btnBuscar.onclick = cargarReporte;
 btnShare.onclick = compartirReporte;
+if (btnDownload) btnDownload.onclick = descargarReporte;
 
 inicializar();

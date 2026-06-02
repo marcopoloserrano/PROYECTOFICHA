@@ -9,9 +9,12 @@
         /* Estilos específicos para impresión */
         @media print {
             .no-print { display: none !important; }
-            body { background: white; padding: 0; }
-            .glass-card { box-shadow: none; border: none; width: 100%; max-width: 100%; }
-            table { font-size: 10pt; }
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            #report-app { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            .glass-card { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; padding: 0 !important; background: transparent !important; }
+            table { font-size: 10pt; width: 100% !important; border: 1px solid #e2e8f0; }
+            th { background: #f1f5f9 !important; color: black !important; -webkit-print-color-adjust: exact; }
+            h1 { color: black !important; font-size: 1.4rem !important; margin-bottom: 20px !important; }
         }
         .filter-row {
             display: flex;
@@ -63,15 +66,20 @@
                 <div class="filter-item">
                     <label>Ordenar por:</label>
                     <select id="filtro-orden">
-                        <option value="FECHA">Fecha y Hora</option>
-                        <option value="ALFA">Alfabético (Paciente)</option>
+                        <option value="FECHA">Fecha y Hora (Cronológico)</option>
                         <option value="DESC">Más Recientes primero</option>
+                        <option value="ALFA">Paciente (Alfabético)</option>
+                        <option value="ESP">Por Especialidad</option>
+                        <option value="MED">Por Médico</option>
                     </select>
                 </div>
                 <div class="filter-item" style="display:flex; align-items:flex-end; gap:8px;">
                     <button id="btn-buscar" class="action-btn" style="margin:0; padding:10px; background:#6366f1;">🔍 Buscar</button>
                     <button id="btn-share" class="action-btn" style="margin:0; padding:10px; background:#10b981; width:auto;" title="Compartir Reporte">
                         <span style="font-size:1.2rem;">📱</span>
+                    </button>
+                    <button id="btn-download" class="action-btn" style="margin:0; padding:10px; background:#0ea5e9; width:auto;" title="Descargar CSV">
+                        <span style="font-size:1.2rem;">📥</span>
                     </button>
                     <button onclick="window.print()" class="action-btn" style="margin:0; padding:10px; background:#64748b; width:auto;" title="Imprimir">
                         <span style="font-size:1.2rem;">🖨️</span>
