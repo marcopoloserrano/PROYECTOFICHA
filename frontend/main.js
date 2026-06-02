@@ -104,9 +104,20 @@ document.querySelector('#app').innerHTML = `
         </div>
         <p class="subtitle">Visualiza todas las fichas reservadas para el día de hoy o filtra por fecha.</p>
         
-        <div class="form-group" style="max-width:250px;">
-           <label>Filtrar por Fecha:</label>
-           <input type="date" id="filtro-fecha-ficha">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;" class="no-print">
+            <div class="form-group" style="max-width:200px; flex:1;">
+               <label>Filtrar por Fecha:</label>
+               <input type="date" id="filtro-fecha-ficha">
+            </div>
+            <div class="form-group" style="max-width:250px; flex:1;">
+               <label>Ver y Ordenar por:</label>
+               <select id="filtro-orden-ficha">
+                  <option value="ESPECIALIDAD">Por Especialidad (Agrupado)</option>
+                  <option value="HORA">Por Hora (Cronológico)</option>
+                  <option value="PACIENTE">Por Paciente (Alfabético)</option>
+                  <option value="MEDICO">Por Médico</option>
+               </select>
+            </div>
         </div>
         
         <div id="tabla-fichas-agrupadas" style="margin-top:1.5rem;">
@@ -394,64 +405,118 @@ function renderFichasAgrupadas() {
         return;
     }
 
-    // Agrupar fichas por Especialidad (buscando la especialidad del doctor en los datos globales)
-    const agrupado = {};
-    
-    fichasHoy.forEach(f => {
-        // Buscar médico para saber su especialidad principal
-        const docInfo = medicosGlobales.find(m => m.id_medico == f.id_medico);
-        let nombreEspecialidad = "General / Sin Asignar";
+    const orden = document.getElementById('filtro-orden-ficha').value;
+
+    if (orden === 'ESPECIALIDAD') {
+        // Agrupar fichas por Especialidad (buscando la especialidad del doctor en los datos globales)
+        const agrupado = {};
         
-        if (docInfo && docInfo.especialidades && docInfo.especialidades.length > 0) {
-            // Tomamos la primera especialidad principal del doctor
-            const espObj = especialidadesGlobales.find(e => e.id_especialidad == docInfo.especialidades[0]);
-            if (espObj) nombreEspecialidad = espObj.nombre;
+        fichasHoy.forEach(f => {
+            const docInfo = medicosGlobales.find(m => m.id_medico == f.id_medico);
+            let nombreEspecialidad = "General / Sin Asignar";
+            
+            if (docInfo && docInfo.especialidades && docInfo.especialidades.length > 0) {
+                const espObj = especialidadesGlobales.find(e => e.id_especialidad == docInfo.especialidades[0]);
+                if (espObj) nombreEspecialidad = espObj.nombre;
+            }
+            
+            if (!agrupado[nombreEspecialidad]) agrupado[nombreEspecialidad] = [];
+            agrupado[nombreEspecialidad].push(f);
+        });
+        
+        // Renderizado HTML Grupal
+        Object.keys(agrupado).forEach(especialidad => {
+            const fichasEsp = agrupado[especialidad];
+            
+            let htmlTabla = `
+                <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; overflow: hidden;">
+                    <div style="background: var(--primary-color); color: white; padding: 10px 15px; font-weight: bold; font-size: 1.1rem; display:flex; justify-content: space-between;">
+                        ${especialidad}
+                        <span>${fichasEsp.length} cita(s)</span>
+                    </div>
+                    <table style="width:100%; border-collapse: collapse; text-align:left; font-size: 0.9rem;">
+                      <thead>
+                        <tr style="background:#f8fafc; border-bottom:1px solid #cbd5e1;">
+                          <th style="padding:10px;">Hora</th>
+                          <th style="padding:10px;">Paciente</th>
+                          <th style="padding:10px;">Doctor</th>
+                          <th style="padding:10px;">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+            `;
+            
+            fichasEsp.sort((a,b) => a.hora.localeCompare(b.hora)).forEach(f => {
+               const badgeColor = f.estado === 'Pendiente' ? '#eab308' : (f.estado.includes('Reserva') ? '#3b82f6' : '#16a34a');
+               htmlTabla += `
+                 <tr style="border-bottom:1px solid #e2e8f0;">
+                   <td style="padding:10px; font-weight:bold; color:#334155;">${f.hora.substring(0,5)}</td>
+                   <td style="padding:10px;"><b>${f.paciente_nombre} ${f.paciente_apellido}</b><br><small style="color:#64748b;">CI: ${f.ci}</small></td>
+                   <td style="padding:10px; color:#475569;">Dr. ${f.medico_nombre}</td>
+                   <td style="padding:10px;"><span style="background:${badgeColor}; color:white; padding:4px 8px; border-radius:12px; font-size:0.7rem; font-weight:bold;">${f.estado}</span></td>
+                 </tr>
+               `;
+            });
+            
+            htmlTabla += `</tbody></table></div>`;
+            contenedor.innerHTML += htmlTabla;
+        });
+    } else {
+        // Renderizado de LISTA PLANA (Ordenada por HORA, PACIENTE o MEDICO)
+        if (orden === 'HORA') {
+            fichasHoy.sort((a,b) => a.hora.localeCompare(b.hora));
+        } else if (orden === 'PACIENTE') {
+            fichasHoy.sort((a,b) => a.paciente_apellido.localeCompare(b.paciente_apellido));
+        } else if (orden === 'MEDICO') {
+            fichasHoy.sort((a,b) => a.medico_nombre.localeCompare(b.medico_nombre));
         }
-        
-        if (!agrupado[nombreEspecialidad]) agrupado[nombreEspecialidad] = [];
-        agrupado[nombreEspecialidad].push(f);
-    });
-    
-    // Renderizado HTML
-    Object.keys(agrupado).forEach(especialidad => {
-        const fichasEsp = agrupado[especialidad];
-        
+
         let htmlTabla = `
             <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 20px; overflow: hidden;">
-                <div style="background: var(--primary-color); color: white; padding: 10px 15px; font-weight: bold; font-size: 1.1rem; display:flex; justify-content: space-between;">
-                    ${especialidad}
-                    <span>${fichasEsp.length} cita(s)</span>
+                <div style="background: #475569; color: white; padding: 10px 15px; font-weight: bold; font-size: 1.1rem; display:flex; justify-content: space-between;">
+                    Lista de Citas (Ordenado por ${orden})
+                    <span>${fichasHoy.length} cita(s)</span>
                 </div>
                 <table style="width:100%; border-collapse: collapse; text-align:left; font-size: 0.9rem;">
                   <thead>
                     <tr style="background:#f8fafc; border-bottom:1px solid #cbd5e1;">
                       <th style="padding:10px;">Hora</th>
                       <th style="padding:10px;">Paciente</th>
-                      <th style="padding:10px;">Doctor</th>
+                      <th style="padding:10px;">Doctor / Especialidad</th>
                       <th style="padding:10px;">Estado</th>
                     </tr>
                   </thead>
                   <tbody>
         `;
-        
-        // Ordenar por hora
-        fichasEsp.sort((a,b) => a.hora.localeCompare(b.hora)).forEach(f => {
-           const badgeColor = f.estado === 'Pendiente' ? '#eab308' : (f.estado.includes('Reserva') ? '#3b82f6' : '#16a34a');
-           htmlTabla += `
-             <tr style="border-bottom:1px solid #e2e8f0;">
-               <td style="padding:10px; font-weight:bold; color:#334155;">${f.hora.substring(0,5)}</td>
-               <td style="padding:10px;"><b>${f.paciente_nombre} ${f.paciente_apellido}</b><br><small style="color:#64748b;">CI: ${f.ci}</small></td>
-               <td style="padding:10px; color:#475569;">Dr. ${f.medico_nombre}</td>
-               <td style="padding:10px;"><span style="background:${badgeColor}; color:white; padding:4px 8px; border-radius:12px; font-size:0.7rem; font-weight:bold;">${f.estado}</span></td>
-             </tr>
-           `;
+
+        fichasHoy.forEach(f => {
+            const badgeColor = f.estado === 'Pendiente' ? '#eab308' : (f.estado.includes('Reserva') ? '#3b82f6' : '#16a34a');
+            
+            // Buscar especialidad para mostrarla en el listado plano
+            const docInfo = medicosGlobales.find(m => m.id_medico == f.id_medico);
+            let nombreEspecialidad = "General";
+            if (docInfo && docInfo.especialidades && docInfo.especialidades.length > 0) {
+                const espObj = especialidadesGlobales.find(e => e.id_especialidad == docInfo.especialidades[0]);
+                if (espObj) nombreEspecialidad = espObj.nombre;
+            }
+
+            htmlTabla += `
+                 <tr style="border-bottom:1px solid #e2e8f0;">
+                   <td style="padding:10px; font-weight:bold; color:#334155;">${f.hora.substring(0,5)}</td>
+                   <td style="padding:10px;"><b>${f.paciente_nombre} ${f.paciente_apellido}</b><br><small style="color:#64748b;">CI: ${f.ci}</small></td>
+                   <td style="padding:10px; color:#475569;">Dr. ${f.medico_nombre}<br><small style="color:#64748b;">${nombreEspecialidad}</small></td>
+                   <td style="padding:10px;"><span style="background:${badgeColor}; color:white; padding:4px 8px; border-radius:12px; font-size:0.7rem; font-weight:bold;">${f.estado}</span></td>
+                 </tr>
+            `;
         });
-        
+
         htmlTabla += `</tbody></table></div>`;
-        contenedor.innerHTML += htmlTabla;
-    });
+        contenedor.innerHTML = htmlTabla;
+    }
 }
 if(filtroFechaFicha) filtroFechaFicha.addEventListener('change', renderFichasAgrupadas);
+const filtroOrdenFicha = document.getElementById('filtro-orden-ficha');
+if(filtroOrdenFicha) filtroOrdenFicha.addEventListener('change', renderFichasAgrupadas);
 
 // FUNCIONES DE REPORTE DASHBOARD (Globales)
 window.imprimirDashboard = function() {
