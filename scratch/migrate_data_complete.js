@@ -1,90 +1,73 @@
-require('dotenv').config();
 const mysql = require('mysql2/promise');
 
-async function migrateAll() {
-  console.log('🚀 Iniciando Migración Completa (Local -> Aiven)...');
-
-  // CONFIGURACIÓN LOCAL (Origen)
-  const localConfig = {
-    host: 'localhost',
+// CONFIGURACIÓN - LLENA ESTOS DATOS
+const LOCAL_CONFIG = {
+    host: '127.0.0.1',
+    port: 3336,
     user: 'root',
-    password: '', // Cambia si tienes contraseña local
-    database: 'hospital_fichaje',
-    port: 3336
-  };
+    password: '',
+    database: 'hospital_fichaje'
+};
 
-  // CONFIGURACIÓN AIVEN (Destino)
-  const cloudConfig = {
-    host: 'mysql-24ac1a4b-marco-8bff.a.aivencloud.com',
-    user: 'avnadmin',
-    password: 'AVNS_hlspJOUOuPdnO4JV2dD',
-    database: 'defaultdb',
-    port: 12407,
-    ssl: { rejectUnauthorized: false }
-  };
+// Pega aquí la "Public URL" de tu MySQL en Railway
+const RAILWAY_PUBLIC_URL = 'mysql://root:NqLEDoeNgDITewtbNGlptsoUKrKWnLqq@zephyr.proxy.rlwy.net:20343/railway';
 
-  let localConn, cloudConn;
+async function migrate() {
+    let localConn, remoteConn;
+    try {
+        console.log('🚀 Iniciando migración de datos...');
 
-  const tables = [
-    'rol', 'cobertura', 'especialidad', 'medico', 'paciente', 
-    'medico_especialidad', 'horario', 'ausencia_medico', 'usuario', 
-    'ficha', 'pago', 'historial_clinico', 'bloqueo_temporal'
-  ];
+        localConn = await mysql.createConnection(LOCAL_CONFIG);
+        console.log('✅ Conectado a base de datos LOCAL (XAMPP)');
 
-  try {
-    localConn = await mysql.createConnection(localConfig);
-    console.log('✅ Conectado a base de datos Local.');
+        remoteConn = await mysql.createConnection(RAILWAY_PUBLIC_URL);
+        console.log('✅ Conectado a base de datos REMOTA (Railway)');
 
-    cloudConn = await mysql.createConnection(cloudConfig);
-    console.log('✅ Conectado a base de datos Aiven.');
+        // Lista de tablas a migrar en orden de dependencia
+        const tables = [
+            'rol', 'cobertura', 'especialidad', 'usuario', 'paciente',
+            'medico', 'consultorio', 'horario', 'medico_especialidad',
+            'ficha', 'pago', 'historial_clinico', 'ausencia_medico', 'bloqueo_temporal'
+        ];
 
-    for (const table of tables) {
-      console.log(`📦 Migrando tabla: ${table}...`);
-      
-      // 1. Leer datos de local (usamos el nombre de la tabla tal cual)
-      // Nota: Si en local son PascalCase, MySQL en Windows los encontrará igual.
-      const [rows] = await localConn.query(`SELECT * FROM ${table}`);
-      
-      if (rows.length === 0) {
-        console.log(`   (Vacía, saltando...)`);
-        continue;
-      }
+        // Desactivar checks de llaves foráneas temporalmente
+        await remoteConn.query('SET FOREIGN_KEY_CHECKS = 0');
 
-      // 2. Insertar en nube (usando INSERT IGNORE para evitar duplicados de PK)
-      const columnNames = Object.keys(rows[0]).join(', ');
-      const placeholders = Object.keys(rows[0]).map(() => '?').join(', ');
-      const sql = `INSERT IGNORE INTO ${table} (${columnNames}) VALUES (${placeholders})`;
+        for (const table of tables) {
+            console.log(`📦 Migrando tabla: ${table}...`);
 
-      let migrados = 0;
-      let omitidos = 0;
+            // 1. Obtener datos de local
+            const [rows] = await localConn.query(`SELECT * FROM ${table}`);
 
-      for (const row of rows) {
-        try {
-            await cloudConn.query(sql, Object.values(row));
-            migrados++;
-        } catch (e) {
-            // Error 1644 es el de los TRIGGERS (SIGNAL SQLSTATE)
-            if (e.errno === 1644 || e.code === 'ER_SIGNAL_EXCEPTION') {
-                omitidos++;
-            } else {
-                console.error(`   ❌ Error en fila de ${table}:`, e.message);
-                throw e; 
+            if (rows.length === 0) {
+                console.log(`   ⚠️ La tabla ${table} está vacía, saltando...`);
+                continue;
             }
+
+            // 2. Limpiar tabla remota (opcional, para evitar duplicados)
+            await remoteConn.query(`DELETE FROM ${table}`);
+
+            // 3. Insertar en remoto
+            const keys = Object.keys(rows[0]);
+            const columns = keys.join(', ');
+            const placeholders = keys.map(() => '?').join(', ');
+            const values = rows.map(row => keys.map(key => row[key]));
+
+            const sql = `INSERT IGNORE INTO ${table} (${columns}) VALUES ?`;
+            await remoteConn.query(sql, [values]);
+
+            console.log(`   ✅ ${rows.length} filas migradas con éxito.`);
         }
-      }
 
-      console.log(`   ✅ ${migrados} registros migrados${omitidos > 0 ? ` (${omitidos} omitidos por reglas de negocio/triggers)` : ''}.`);
+        await remoteConn.query('SET FOREIGN_KEY_CHECKS = 1');
+        console.log('\n✨ ¡Migración completada con éxito!');
+
+    } catch (error) {
+        console.error('❌ Error durante la migración:', error);
+    } finally {
+        if (localConn) await localConn.end();
+        if (remoteConn) await remoteConn.end();
     }
-
-    console.log('\n🎉 ¡MIGRACIÓN TOTAL COMPLETADA CON ÉXITO! 🎉');
-    console.log('💡 Ahora todos tus datos locales están en el celular/nube.');
-
-  } catch (error) {
-    console.error('❌ Error fatal durante la migración:', error.message);
-  } finally {
-    if (localConn) await localConn.end();
-    if (cloudConn) await cloudConn.end();
-  }
 }
 
-migrateAll();
+migrate();
